@@ -61,6 +61,7 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 			m.showDetail = true
 			m.layoutDetail()
 			m.setDetail()
+			return m.loadFields()
 		}
 		return nil
 	case key.Matches(msg, k.Close):

@@ -98,6 +98,7 @@ type Model struct {
 	detail        viewport.Model
 	detailEntries []filterEntry // filterable fields of the detail panel
 	detailField   int           // selected entry
+	detailName    string        // field of the selected entry, kept from log to log
 
 	mode      inputMode
 	input     textinput.Model

@@ -277,10 +277,17 @@ func ceilSecond(t time.Time) int64 {
 
 // filter is a tiny subset of the Quickwit syntax: terms separated by
 // spaces, all required (AND is implied); NOT or a leading "-" excludes the
-// next term. "field:value" matches a field (body and body.message by
-// substring, others exactly, case-insensitively); a bare word matches the
-// body. Values may be quoted. "*" and the AND keyword are ignored.
-type filter struct{ terms []filterTerm }
+// next term or parenthesized group (groups are not nested). "field:value"
+// matches a field (body and body.message by substring, others exactly,
+// case-insensitively); a bare word matches the body. Values may be quoted.
+// "*" and the AND keyword are ignored; OR is rejected.
+type filter struct{ groups []filterGroup }
+
+// filterGroup is a term, or several in parentheses, that must all match.
+type filterGroup struct {
+	terms   []filterTerm
+	negated bool
+}
 
 type filterTerm struct {
 	field, value string // field is empty for a word of the body
@@ -289,6 +296,7 @@ type filterTerm struct {
 
 func parseFilter(text string) (filter, error) {
 	var f filter
+	var group *filterGroup // open parenthesized group
 	negate := false
 	for _, tok := range splitQuery(text) {
 		switch {
@@ -297,10 +305,23 @@ func parseFilter(text string) (filter, error) {
 		case tok == "NOT":
 			negate = true
 			continue
-		case strings.ContainsAny(tok, "()") || tok == "OR":
+		case tok == "OR" || strings.Count(tok, "(") > 1 || (group != nil && strings.HasPrefix(tok, "(")) ||
+			strings.ContainsAny(strings.TrimSuffix(strings.TrimPrefix(tok, "("), ")"), "()"):
 			return filter{}, fmt.Errorf("fake: unsupported query syntax %q", tok)
 		}
+		if rest, ok := strings.CutPrefix(tok, "("); ok {
+			group = &filterGroup{negated: negate}
+			negate, tok = false, rest
+		}
+		closing := false
+		if rest, ok := strings.CutSuffix(tok, ")"); ok && !strings.HasSuffix(tok, `\")`) {
+			if group == nil {
+				return filter{}, fmt.Errorf("fake: unbalanced parenthesis in %q", text)
+			}
+			closing, tok = true, rest
+		}
 		t := filterTerm{negated: negate}
+		negate = false
 		if rest, ok := strings.CutPrefix(tok, "-"); ok {
 			t.negated, tok = !t.negated, rest
 		}
@@ -309,8 +330,18 @@ func parseFilter(text string) (filter, error) {
 		} else {
 			t.value = unquote(tok)
 		}
-		f.terms = append(f.terms, t)
-		negate = false
+		if group != nil {
+			group.terms = append(group.terms, t)
+		} else {
+			f.groups = append(f.groups, filterGroup{terms: []filterTerm{t}})
+		}
+		if closing {
+			f.groups = append(f.groups, *group)
+			group = nil
+		}
+	}
+	if group != nil {
+		return filter{}, fmt.Errorf("fake: unbalanced parenthesis in %q", text)
 	}
 	return f, nil
 }
@@ -347,11 +378,18 @@ func unquote(v string) string {
 	return v
 }
 
-func (f filter) isEmpty() bool { return len(f.terms) == 0 }
+func (f filter) isEmpty() bool { return len(f.groups) == 0 }
 
 func (f filter) match(r logs.Record) bool {
-	for _, t := range f.terms {
-		if t.matches(r) == t.negated {
+	for _, g := range f.groups {
+		all := true
+		for _, t := range g.terms {
+			if t.matches(r) == t.negated {
+				all = false
+				break
+			}
+		}
+		if all == g.negated {
 			return false
 		}
 	}

@@ -50,6 +50,9 @@ type Field struct {
 	Type string // keyword, text, long, double, boolean, ip, date_nanos, binary
 	// Aggregatable fields can list their most frequent values.
 	Aggregatable bool
+	// FullText fields are tokenized: multi-word values must be searched word
+	// by word when the backend does not index word positions.
+	FullText bool
 }
 
 // FieldValue is a value of a field with its number of occurrences.

@@ -18,7 +18,19 @@ import (
 type filterEntry struct {
 	field string // platform field name, e.g. attributes.http.method
 	value string
-	line  int // line of the entry in the detail content
+	text  bool // a full-text field: matched word by word
+	line  int  // line of the entry in the detail content
+}
+
+// searchable tells whether a field can be filtered on and whether it is a
+// full-text field. Until the platform's field list is known, every field
+// is offered.
+func (m *Model) searchable(field string) (ok, text bool) {
+	if m.compl.fields == nil {
+		return true, field == "body" || field == "body.message"
+	}
+	f, ok := m.field(field)
+	return ok, f.FullText || f.Type == "text"
 }
 
 // layoutDetail sizes the detail viewport to its panel.
@@ -31,11 +43,19 @@ func (m *Model) layoutDetail() {
 	m.detail.SetHeight(max(m.layout().panels-2, 1))
 }
 
-// setDetail shows the selected record in the detail panel, from the top.
+// setDetail shows the selected record in the detail panel, from the top,
+// keeping the same field selected when the record has it.
 func (m *Model) setDetail() {
 	m.detailField = 0
-	m.renderDetailContent()
 	m.detail.GotoTop()
+	m.renderDetailContent()
+	for i, e := range m.detailEntries {
+		if e.field == m.detailName && i != m.detailField {
+			m.detailField = i
+			m.renderDetailContent()
+			break
+		}
+	}
 }
 
 // renderDetailContent renders the selected record, keeping the scroll
@@ -68,6 +88,7 @@ func (m *Model) selectDetailField(delta int) {
 		return
 	}
 	m.detailField = clampIndex(m.detailField+delta, len(m.detailEntries)-1)
+	m.detailName = m.detailEntries[m.detailField].field
 	m.renderDetailContent()
 }
 
@@ -77,14 +98,14 @@ func (m *Model) renderDetail(r logs.Record, width int) (string, []filterEntry) {
 	var lines []string
 	var entries []filterEntry
 	selected := m.detailField
-	add := func(text, field, value string) {
-		if field != "" && value != "" {
+	add := func(line, field, value string) {
+		if ok, text := m.searchable(field); ok && field != "" && value != "" {
 			if len(entries) == selected && m.detailFocused() {
-				text = t.Selected.Render(fit(ansi.Strip(text), width))
+				line = t.Selected.Render(fit(ansi.Strip(line), width))
 			}
-			entries = append(entries, filterEntry{field: field, value: value, line: len(lines)})
+			entries = append(entries, filterEntry{field: field, value: value, text: text, line: len(lines)})
 		}
-		lines = append(lines, text)
+		lines = append(lines, line)
 	}
 	kv := func(name, value, field, filterValue string) {
 		if value == "" {

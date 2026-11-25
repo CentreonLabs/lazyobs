@@ -58,7 +58,8 @@ UI conventions:
 - Response: `{hits: [...], num_hits, elapsed_time_micros, errors: []}`. The spec types `hits` as a bare object; it is an array of flat OTel-like records: `timestamp_nanos`, `observed_timestamp_nanos`, `severity_text`, `severity_number`, `service_name`, `scope_name`, `scope_version`, `trace_flags`, `body` (object, e.g. `{message}`), `resource_attributes` (object). Treat other fields (`attributes`, `trace_id`, `span_id`) as optional.
 - Hits are sorted newest first; there is no sort parameter (`sort_by` is ignored) and **no unique document ID**.
 - POST with `aggregation: {aggregationType: count|severity|service_name|{custom:{field}}, targetResolution, interval}` adds `curves[]`; curve `times` are **milliseconds**.
-- `/logs/fields/capabilities` and `/logs/fields/{field}/terms` work (autocomplete, facets).
+- `/logs/fields/capabilities` and `/logs/fields/{field}/terms` work (autocomplete, facets). Only fields listed by capabilities can be searched: `scope_name`/`scope_version` are stored but give "not full-text searchable", `trace_flags` a 500. Terms only work on `aggregatable` fields (`body.message` gives 400).
+- Fields with a `text` type have no word positions: a quoted multi-word value fails ("phrase query on field which does not have positions indexed"); search them word by word (`(f:a AND f:b)`).
 - Errors: `{"message": "..."}` with 400/401/402/403/413/422. No rate-limit headers observed.
 - No streaming endpoint: live mode polls every **10 s** with an overlap window and dedups on a fingerprint.
 - `POST /log-analysis/nlquery/translate` (**Editor** role) takes `{prompt, available_services?}` and returns `{query, time_range, warning}`; `time_range` is a look-back in **milliseconds**, `{start, end}` in epoch ms, or null. We ground it with the top `service_name` terms of the last 7 days.

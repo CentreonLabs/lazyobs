@@ -37,6 +37,7 @@ func (m *Model) openContext() tea.Cmd {
 	})
 	child.anchor = r.Fingerprint()
 	child.showDetail = true
+	child.compl.fields, child.compl.fieldsAt = m.compl.fields, m.compl.fieldsAt
 	from := m
 	return tea.Batch(
 		func() tea.Msg { return tabset.OpenMsg{From: from, Child: child} },

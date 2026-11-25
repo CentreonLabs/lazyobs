@@ -46,6 +46,7 @@ func (f Fields) Fields(ctx context.Context, from, to time.Time) ([]obs.Field, er
 			}
 			searchable = searchable || c.Searchable
 			field.Aggregatable = field.Aggregatable || c.Aggregatable
+			field.FullText = field.FullText || (t == "text" && c.Searchable)
 		}
 		if searchable {
 			fields = append(fields, field)

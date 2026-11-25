@@ -2,6 +2,7 @@ package logsview
 
 import (
 	"strings"
+	"unicode"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -14,17 +15,61 @@ func (m *Model) filterOnDetail(exclude bool) tea.Cmd {
 	if len(m.detailEntries) == 0 {
 		return nil
 	}
-	e := m.detailEntries[m.detailField]
-	term := e.field + ":" + quoteValue(e.value)
-	if exclude {
-		term = "NOT " + term
-	}
+	term := filterTerm(m.detailEntries[m.detailField], exclude)
 	query, added := addTerm(m.query, term)
 	if !added {
 		return app.Notify(app.LevelInfo, "the query already has %s", term)
 	}
 	m.query = query
 	return tea.Batch(m.search(), app.Notify(app.LevelInfo, "added %s · ctrl+t first to keep the previous search in a tab", term))
+}
+
+// maxTextWords bounds the words of a full-text value used in a filter.
+const maxTextWords = 12
+
+// filterTerm builds the query term for an entry. A full-text value made of
+// several words is matched word by word, since the platform does not index
+// word positions (quoted phrases fail): all words are required, and
+// excluding excludes them together. Single-word values are kept as they are
+// ("0.1.0" stays one term).
+func filterTerm(e filterEntry, exclude bool) string {
+	var words []string
+	if e.text && len(strings.Fields(e.value)) > 1 {
+		words = uniqueWords(e.value)
+	}
+	if len(words) <= 1 {
+		term := e.field + ":" + quoteValue(e.value)
+		if len(words) == 1 {
+			term = e.field + ":" + quoteValue(words[0])
+		}
+		if exclude {
+			return "NOT " + term
+		}
+		return term
+	}
+	terms := make([]string, len(words))
+	for i, w := range words {
+		terms[i] = e.field + ":" + quoteValue(w)
+	}
+	// Parenthesized either way, so that + and - on the same value flip it.
+	group := "(" + strings.Join(terms, " AND ") + ")"
+	if exclude {
+		return "NOT " + group
+	}
+	return group
+}
+
+// uniqueWords splits text into its distinct words, at most maxTextWords.
+func uniqueWords(text string) []string {
+	seen := map[string]bool{}
+	var words []string
+	for _, w := range strings.FieldsFunc(text, func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) }) {
+		if !seen[strings.ToLower(w)] && len(words) < maxTextWords {
+			seen[strings.ToLower(w)] = true
+			words = append(words, w)
+		}
+	}
+	return words
 }
 
 // addTerm combines a term with a query (AND), keeping the query's meaning:

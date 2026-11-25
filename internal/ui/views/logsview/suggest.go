@@ -71,8 +71,17 @@ func (c *completion) open() bool { return !c.dismissed && len(c.items) > 0 }
 func (m *Model) startCompletion() tea.Cmd {
 	m.compl.dismissed = false
 	m.compl.items = nil
+	if cmd := m.loadFields(); cmd != nil {
+		return cmd
+	}
+	return m.refreshCompletion()
+}
+
+// loadFields fetches the searchable fields, unless they are fresh or on
+// their way. They drive autocompletion and the filters of the detail panel.
+func (m *Model) loadFields() tea.Cmd {
 	if m.opts.Fields == nil || m.compl.loadingFields || (m.compl.fields != nil && m.opts.Now().Sub(m.compl.fieldsAt) < fieldsTTL) {
-		return m.refreshCompletion()
+		return nil
 	}
 	m.compl.loadingFields = true
 	src, viewID := m.opts.Fields, m.id
@@ -91,6 +100,7 @@ func (m *Model) onFields(msg fieldsMsg) tea.Cmd {
 		return nil // completion is a convenience: stay silent
 	}
 	m.compl.fields, m.compl.fieldsAt = msg.fields, m.opts.Now()
+	m.renderDetailContent() // drop the fields that cannot be searched
 	return m.refreshCompletion()
 }
 

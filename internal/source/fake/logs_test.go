@@ -183,4 +183,19 @@ func TestFilterSyntax(t *testing.T) {
 	if _, err := src.Search(context.Background(), obs.Query{Text: "a:1 OR b:2", Range: obs.Last(time.Minute)}); err == nil {
 		t.Error("OR is not supported by the demo source and must say so")
 	}
+
+	// A negated group excludes logs matching all of its terms.
+	both := q("body.message:health AND body.message:check")
+	notBoth := q("NOT (body.message:health AND body.message:check)")
+	if both.Total == 0 || both.Total+notBoth.Total != all.Total {
+		t.Fatalf("group: both %d + not both %d != all %d", both.Total, notBoth.Total, all.Total)
+	}
+	if group := q("(body.message:health AND body.message:check)"); group.Total != both.Total {
+		t.Errorf("a positive group must match like its terms: %d vs %d", group.Total, both.Total)
+	}
+	for _, bad := range []string{"(a:1", "a:1)", "((a:1))"} {
+		if _, err := src.Search(context.Background(), obs.Query{Text: bad, Range: obs.Last(time.Minute)}); err == nil {
+			t.Errorf("%q should be rejected", bad)
+		}
+	}
 }

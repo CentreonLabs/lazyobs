@@ -35,6 +35,9 @@ func TestAddTerm(t *testing.T) {
 // selectField moves the detail selection to the entry of field.
 func (h *harness) selectField(t *testing.T, field string) filterEntry {
 	t.Helper()
+	for h.view.detailField > 0 {
+		h.d.Keys("k")
+	}
 	for i := 0; i < 50; i++ {
 		e := h.view.detailEntries[h.view.detailField]
 		if e.field == field {
@@ -112,5 +115,80 @@ func TestMessageField(t *testing.T) {
 	r.Raw = []byte(`{"body":{"level":3}}`)
 	if f := messageField(r); f != "" {
 		t.Errorf("unknown body shape: %q", f)
+	}
+}
+
+func TestFilterTerm(t *testing.T) {
+	cases := []struct {
+		e       filterEntry
+		exclude bool
+		want    string
+	}{
+		{filterEntry{field: "service_name", value: "auth"}, false, "service_name:auth"},
+		{filterEntry{field: "service_name", value: "auth"}, true, "NOT service_name:auth"},
+		{filterEntry{field: "attributes.http.route", value: "/v1/orders"}, false, "attributes.http.route:/v1/orders"},
+		{filterEntry{field: "resource_attributes.host.name", value: "web 01"}, false, `resource_attributes.host.name:"web 01"`},
+		{filterEntry{field: "body.message", value: "timeout", text: true}, false, "body.message:timeout"},
+		{filterEntry{field: "resource_attributes.service.version", value: "0.1.0", text: true}, false, "resource_attributes.service.version:0.1.0"},
+		{
+			filterEntry{field: "body.message", value: "upstream timeout after 42ms", text: true},
+			false,
+			"(body.message:upstream AND body.message:timeout AND body.message:after AND body.message:42ms)",
+		},
+		{filterEntry{field: "body.message", value: "a a b", text: true}, true, "NOT (body.message:a AND body.message:b)"},
+	}
+	for _, tc := range cases {
+		if got := filterTerm(tc.e, tc.exclude); got != tc.want {
+			t.Errorf("filterTerm(%+v, %v) = %q, want %q", tc.e, tc.exclude, got, tc.want)
+		}
+	}
+	// + then - on the same message flips the group.
+	include := filterTerm(filterEntry{field: "body.message", value: "health check ok", text: true}, false)
+	exclude := filterTerm(filterEntry{field: "body.message", value: "health check ok", text: true}, true)
+	if got, _ := addTerm("x:1 AND "+include, exclude); got != "x:1 AND "+exclude {
+		t.Errorf("flip of a message group: %q", got)
+	}
+}
+
+func TestOnlySearchableFieldsAreOffered(t *testing.T) {
+	h := newHarness(t, Options{})
+	h.d.Keys("enter", "tab")
+	var fields []string
+	for _, e := range h.view.detailEntries {
+		fields = append(fields, e.field)
+		if e.field == "scope_name" {
+			t.Fatalf("scope_name cannot be searched and must not be offered: %v", fields)
+		}
+	}
+	if !strings.Contains(h.d.Screen(), "lazyobs-demo") {
+		t.Error("non-searchable fields are still displayed")
+	}
+
+	msg := h.selectField(t, "body.message")
+	if !msg.text {
+		t.Fatal("the message is a full-text field")
+	}
+	h.d.Keys("+")
+	if !strings.HasPrefix(h.view.query, "(body.message:") || len(h.view.records) == 0 {
+		t.Fatalf("query %q found %d logs", h.view.query, len(h.view.records))
+	}
+	for _, r := range h.view.records {
+		if r.Body != msg.value && !strings.Contains(r.Body, strings.Fields(msg.value)[0]) {
+			t.Fatalf("unexpected message %q", r.Body)
+		}
+	}
+	h.d.Keys("-")
+	if !strings.HasPrefix(h.view.query, "NOT (body.message:") {
+		t.Fatalf("- on the same message must flip the filter: %q", h.view.query)
+	}
+}
+
+func TestSelectedFieldIsKeptFromLogToLog(t *testing.T) {
+	h := newHarness(t, Options{})
+	h.d.Keys("enter", "tab")
+	h.selectField(t, "attributes.http.route")
+	h.d.Keys("tab", "j", "j", "tab") // next logs, back to the detail panel
+	if e := h.view.detailEntries[h.view.detailField]; e.field != "attributes.http.route" {
+		t.Errorf("selection moved to %s", e.field)
 	}
 }

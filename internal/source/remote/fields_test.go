@@ -35,7 +35,8 @@ func TestFields(t *testing.T) {
 	if len(fields) != 3 || fields[0].Name != "body.message" || fields[1].Name != "service_name" {
 		t.Fatalf("fields = %+v", fields)
 	}
-	if fields[0].Aggregatable || fields[0].Type != "text" || fields[1].Type != "keyword" || !fields[1].Aggregatable || fields[2].Type != "long" {
+	if fields[0].Aggregatable || fields[0].Type != "text" || fields[1].Type != "keyword" || !fields[1].Aggregatable || fields[2].Type != "long" ||
+		!fields[0].FullText || !fields[1].FullText || fields[2].FullText {
 		t.Errorf("types/aggregatable = %+v", fields)
 	}
 	values, err := f.Values(context.Background(), "service_name", "au", now, now, 10)

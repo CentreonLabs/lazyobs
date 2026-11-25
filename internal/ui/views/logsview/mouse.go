@@ -65,7 +65,7 @@ func (m *Model) onClick(mouse tea.Mouse) tea.Cmd {
 		line := m.detail.YOffset() + mouse.Y - h.detailTop
 		for i, e := range m.detailEntries {
 			if e.line == line {
-				m.detailField = i
+				m.detailField, m.detailName = i, e.field
 			}
 		}
 		m.renderDetailContent()

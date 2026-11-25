@@ -16,15 +16,16 @@ const maxSampledFieldSeconds = 600
 
 var _ obs.FieldSuggester = (*Logs)(nil)
 
+// demoFields mirror the platform: scope_name and trace_flags are stored but
+// not searchable, so they are not listed.
 var demoFields = []obs.Field{
 	{Name: "attributes.http.method", Type: "keyword", Aggregatable: true},
 	{Name: "attributes.http.route", Type: "keyword", Aggregatable: true},
 	{Name: "attributes.http.status_code", Type: "long", Aggregatable: true},
-	{Name: "body.message", Type: "text"},
+	{Name: "body.message", Type: "keyword", FullText: true}, // keyword and text, like the platform
 	{Name: "resource_attributes.host.name", Type: "keyword", Aggregatable: true},
 	{Name: "resource_attributes.service.version", Type: "keyword", Aggregatable: true},
-	{Name: "scope_name", Type: "keyword", Aggregatable: true},
-	{Name: "service_name", Type: "keyword", Aggregatable: true},
+	{Name: "service_name", Type: "keyword", Aggregatable: true, FullText: true},
 	{Name: "severity_number", Type: "long", Aggregatable: true},
 	{Name: "severity_text", Type: "keyword", Aggregatable: true},
 	{Name: "span_id", Type: "binary"},
