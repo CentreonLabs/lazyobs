@@ -15,6 +15,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/CentreonLabs/lazyobs/internal/obs"
+	"github.com/CentreonLabs/lazyobs/internal/ui/draw"
 )
 
 // Styles are the colors of the non-data elements.
@@ -208,14 +209,14 @@ func Render(o Options) (string, Layout) {
 	if hovering {
 		col := o.Hover.Col
 		at := Layout{PlotW: plotW}.TimeAt(col, o.From, o.To).Add(span / time.Duration(2*plotW))
-		box := boxed(tooltip(o, visible, at, step, perUnit, unit), o.Styles.Hover)
+		box := draw.Boxed(tooltip(o, visible, at, step, perUnit, unit), o.Styles.Hover)
 		boxW := ansi.StringWidth(box[0])
 		x := gutter + col + tooltipGap
 		if x+boxW > o.Width {
 			x = gutter + col - tooltipGap - boxW + 1 // flip to the left of the pointer
 		}
 		y := min(max(o.Hover.Row-len(box)/2, 0), max(plotH-len(box), 0))
-		overlay(lines, box, max(x, 0), y)
+		draw.Overlay(lines, box, max(x, 0), y)
 	}
 	layout := Layout{Legend: Legend{Row: len(lines) - 1, Items: items}, PlotX: gutter, PlotW: plotW, PlotH: plotH}
 	return pad(strings.Join(lines, "\n"), o.Width, o.Height), layout

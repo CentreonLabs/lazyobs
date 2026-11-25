@@ -3,11 +3,9 @@ package chart
 import (
 	"fmt"
 	"sort"
-	"strings"
 	"time"
 
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/x/ansi"
 
 	"github.com/CentreonLabs/lazyobs/internal/obs"
 )
@@ -67,31 +65,4 @@ func tooltip(o Options, visible []obs.Series, t time.Time, step time.Duration, p
 			o.Styles.Axis.Render(fmt.Sprintf("%7s", formatValue(total)))))
 	}
 	return rows
-}
-
-// overlay draws box (lines of equal width) over lines at column x, row y.
-func overlay(lines []string, box []string, x, y int) {
-	for i, b := range box {
-		row := y + i
-		if row < 0 || row >= len(lines) {
-			continue
-		}
-		w := ansi.StringWidth(b)
-		line := lines[row]
-		lines[row] = ansi.Truncate(line, x, "") + strings.Repeat(" ", max(x-ansi.StringWidth(line), 0)) +
-			b + ansi.TruncateLeft(line, x+w, "")
-	}
-}
-
-// boxed frames rows with a rounded border.
-func boxed(rows []string, border lipgloss.Style) []string {
-	w := 0
-	for _, r := range rows {
-		w = max(w, ansi.StringWidth(r))
-	}
-	out := []string{border.Render("╭" + strings.Repeat("─", w+2) + "╮")}
-	for _, r := range rows {
-		out = append(out, border.Render("│ ")+r+strings.Repeat(" ", w-ansi.StringWidth(r))+border.Render(" │"))
-	}
-	return append(out, border.Render("╰"+strings.Repeat("─", w+2)+"╯"))
 }
