@@ -165,3 +165,37 @@ func TestMaxTabs(t *testing.T) {
 		t.Fatalf("len %d", h.tabs.Len())
 	}
 }
+
+func TestTitlesWinOverTheHint(t *testing.T) {
+	h := newHarness(t)
+	h.d.Keys("ctrl+t")
+	h.d.Type("service_name:auth")
+	h.d.Keys("enter", "[")
+	if bar := h.bar(); strings.Contains(bar, "…") {
+		t.Errorf("titles must not be cut while the hint takes room: %q", bar)
+	}
+	if bar := h.bar(); !strings.Contains(bar, "2 service_name:auth · ") {
+		t.Errorf("tab bar = %q", bar)
+	}
+}
+
+func TestRestoredTabs(t *testing.T) {
+	th := theme.New(true)
+	now := time.Date(2026, 11, 25, 12, 0, 0, 0, time.UTC)
+	src := fake.NewLogs(3, func() time.Time { return now })
+	opts := logsview.Options{Source: src, Histogram: src, Theme: th, Now: func() time.Time { return now }}
+	tabs := []tabset.Child{
+		logsview.Restore(opts, logsview.State{Range: logsview.DefaultRange}),
+		logsview.Restore(opts, logsview.State{Query: "service_name:auth", Range: logsview.DefaultRange}),
+	}
+	set := tabset.NewWithTabs("Logs", th, tabs, 1)
+	d := uitest.New(t, app.New("test", th, app.Tab{Title: "Logs", View: set}), 120, 36)
+	if set.Active() != 1 || !strings.Contains(d.Screen(), "query service_name:auth") {
+		t.Fatalf("active tab not restored:\n%s", d.Screen())
+	}
+	// Every restored tab has searched, not only the visible one.
+	d.Keys("<")
+	if !strings.Contains(d.Screen(), " logs · ") {
+		t.Errorf("background tab did not search:\n%s", d.Screen())
+	}
+}

@@ -93,6 +93,7 @@ type Model struct {
 
 	notice   NotifyMsg
 	noticeID int
+	startup  []tea.Cmd // notifications queued before the program starts
 }
 
 // New returns the root model. The first tab with a view is active.
@@ -108,9 +109,14 @@ func New(context string, th *theme.Theme, tabs ...Tab) *Model {
 	return m
 }
 
+// Notify shows a message in the status bar once the program starts.
+func (m *Model) Notify(level Level, format string, args ...any) {
+	m.startup = append(m.startup, Notify(level, format, args...))
+}
+
 // Init implements tea.Model.
 func (m *Model) Init() tea.Cmd {
-	cmds := []tea.Cmd{tea.RequestBackgroundColor}
+	cmds := append([]tea.Cmd{tea.RequestBackgroundColor}, m.startup...)
 	for _, t := range m.tabs {
 		if t.View != nil {
 			cmds = append(cmds, t.View.Init())

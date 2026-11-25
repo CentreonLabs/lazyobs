@@ -29,6 +29,17 @@ type harness struct {
 
 func newHarness(t *testing.T, opts Options) *harness {
 	t.Helper()
+	return newHarnessWith(t, opts, nil)
+}
+
+// newHarnessFrom starts a view restored from a saved state.
+func newHarnessFrom(t *testing.T, s State) *harness {
+	t.Helper()
+	return newHarnessWith(t, Options{}, &s)
+}
+
+func newHarnessWith(t *testing.T, opts Options, restore *State) *harness {
+	t.Helper()
 	h := &harness{clock: &clock{time.Date(2026, 11, 25, 12, 0, 0, 0, time.UTC)}}
 	src := fake.NewLogs(8, h.clock.now)
 	th := theme.New(true)
@@ -37,7 +48,11 @@ func newHarness(t *testing.T, opts Options) *harness {
 		h.ticks = append(h.ticks, msg)
 		return nil
 	}
-	h.view = New(opts)
+	if restore != nil {
+		h.view = Restore(opts, *restore)
+	} else {
+		h.view = New(opts)
+	}
 	h.d = uitest.New(t, app.New("test", th, app.Tab{Title: "Logs", View: h.view}), 120, 30)
 	return h
 }

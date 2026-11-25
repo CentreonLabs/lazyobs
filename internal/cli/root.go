@@ -36,7 +36,8 @@ context of the configuration file.`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Args:          cobra.NoArgs,
-		Example: `  lazyobs                                   # current context, last 15 minutes
+		Example: `  lazyobs                                   # reopen the tabs of the last session
+  lazyobs --fresh                           # start over: one tab, last 15 minutes
   lazyobs --range 24h --query 'severity_text:ERROR'
   lazyobs --context staging
   lazyobs --demo                            # synthetic data, no account needed`,
@@ -53,6 +54,7 @@ context of the configuration file.`,
 	f.StringVar(&a.overrides.URL, "url", "", "API base URL (overrides the context)")
 
 	root.Flags().BoolVar(&tui.demo, "demo", false, "explore synthetic data without connecting to the platform")
+	root.Flags().BoolVar(&tui.fresh, "fresh", false, "start a new session instead of reopening the last one's tabs")
 	root.Flags().StringVarP(&tui.query, "query", "q", "", "initial query (Quickwit syntax)")
 	root.Flags().StringVarP(&tui.rng, "range", "r", "", `initial time range: 15m, 24h, 7d or "2026-11-03 13:00 .. 2026-11-03 14:00"`)
 

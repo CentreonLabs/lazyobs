@@ -116,6 +116,16 @@ variables, then the context.
 Keep the token file readable only by you (`chmod 600`); lazyobs warns otherwise. It never prints
 or logs the token.
 
+## Sessions
+
+lazyobs reopens where you left it: on exit, the tabs of the current context (query, time range,
+live mode, hidden levels, display preferences) are saved to `~/.local/state/lazyobs/state.json`
+(`$XDG_STATE_HOME`; `%LocalAppData%` on Windows) and restored on the next start. Relative ranges
+("last 15m") follow the clock, absolute ones stay where they were. Each context, and the demo, has
+its own session.
+
+`lazyobs --fresh` starts a new session instead; `--query` and `--range` do too, with those values.
+
 ## Development
 
 Requires Go (the exact toolchain is pinned in `go.mod` and downloaded automatically).

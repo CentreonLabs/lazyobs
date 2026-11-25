@@ -23,18 +23,19 @@ make cross    # build all OS/arch into ./dist
 
 Dependency direction: `ui → app → engine → obs ← source → api`. `internal/obs` imports nothing from the project.
 
-| Package                  | Role                                                                                                       |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `cmd/lazyobs`            | Entry point, cobra subcommands, TUI launch                                                                 |
-| `internal/obs`           | Signal-agnostic domain: `Query`, `TimeRange`, `Cursor`, `Page[T]`, `Series`, `Searcher[T]`, `Histogrammer` |
-| `internal/obs/logs`      | Log domain: `Record`, `Severity`, dedup fingerprint                                                        |
-| `internal/api`           | Hand-written HTTP client (DTOs, errors, auth); fixtures in `testdata/`                                     |
-| `internal/source/remote` | Adapts `api` to `obs` interfaces                                                                           |
-| `internal/source/fake`   | Synthetic data source (tests, `--demo`)                                                                    |
-| `internal/engine`        | UI-free logic: pager (offset → time-window), live tail (poll + dedup)                                      |
-| `internal/config`        | Contexts, env/flag overrides, `Secret` type                                                                |
-| `internal/app`           | Root Bubble Tea model, signal registry (`SignalView`)                                                      |
-| `internal/ui`            | Theme, keymaps, `uitest` headless driver, per-signal views (`ui/views/logsview`)                           |
+| Package                  | Role                                                                                                                                         |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cmd/lazyobs`            | Entry point, cobra subcommands, TUI launch                                                                                                   |
+| `internal/obs`           | Signal-agnostic domain: `Query`, `TimeRange`, `Cursor`, `Page[T]`, `Series`, `Searcher[T]`, `Histogrammer`                                   |
+| `internal/obs/logs`      | Log domain: `Record`, `Severity`, dedup fingerprint                                                                                          |
+| `internal/api`           | Hand-written HTTP client (DTOs, errors, auth); fixtures in `testdata/`                                                                       |
+| `internal/source/remote` | Adapts `api` to `obs` interfaces                                                                                                             |
+| `internal/source/fake`   | Synthetic data source (tests, `--demo`)                                                                                                      |
+| `internal/engine`        | UI-free logic: pager (offset → time-window), live tail (poll + dedup)                                                                        |
+| `internal/config`        | Contexts, env/flag overrides, `Secret` type                                                                                                  |
+| `internal/app`           | Root Bubble Tea model, signal registry (`SignalView`)                                                                                        |
+| `internal/session`       | Saved sessions (tabs per context) in `$XDG_STATE_HOME/lazyobs/state.json`; tab contents are opaque JSON owned by the view (`logsview.State`) |
+| `internal/ui`            | Theme, keymaps, `uitest` headless driver, per-signal views (`ui/views/logsview`)                                                             |
 
 Adding a signal = domain type in `obs/<signal>`, mapping in `api/`, `remote` searcher, view in `ui/views/<signal>`, register it in `app`.
 

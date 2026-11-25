@@ -6,6 +6,7 @@
 package obs
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -87,4 +88,41 @@ type Page[T any] struct {
 	Next  *Cursor // nil when there is nothing more to fetch
 	// Warnings are non-fatal issues (partial results, truncation) to surface to the user.
 	Warnings []string
+}
+
+// timeRangeJSON is the serialized form of a TimeRange: {"last":"15m"} or
+// {"from":"…","to":"…"} (RFC 3339).
+type timeRangeJSON struct {
+	Last string     `json:"last,omitempty"`
+	From *time.Time `json:"from,omitempty"`
+	To   *time.Time `json:"to,omitempty"`
+}
+
+// MarshalJSON implements json.Marshaler.
+func (r TimeRange) MarshalJSON() ([]byte, error) {
+	if r.IsRelative() {
+		return json.Marshal(timeRangeJSON{Last: FormatDuration(r.Last)})
+	}
+	return json.Marshal(timeRangeJSON{From: &r.From, To: &r.To})
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (r *TimeRange) UnmarshalJSON(b []byte) error {
+	var v timeRangeJSON
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	switch {
+	case v.Last != "":
+		d, err := ParseDuration(v.Last)
+		if err != nil {
+			return err
+		}
+		*r = Last(d)
+	case v.From != nil && v.To != nil && v.From.Before(*v.To):
+		*r = Between(*v.From, *v.To)
+	default:
+		return fmt.Errorf("invalid time range %s", b)
+	}
+	return nil
 }

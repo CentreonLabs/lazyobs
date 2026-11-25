@@ -1,6 +1,7 @@
 package obs_test
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -47,5 +48,34 @@ func TestFormatDuration(t *testing.T) {
 	}
 	if got := obs.Last(time.Hour).String(); got != "last 1h" {
 		t.Errorf("String() = %q", got)
+	}
+}
+
+func TestTimeRangeJSON(t *testing.T) {
+	for _, r := range []obs.TimeRange{
+		obs.Last(15 * time.Minute),
+		obs.Last(7 * 24 * time.Hour),
+		obs.Between(now.Add(-time.Hour), now),
+	} {
+		b, err := json.Marshal(r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got obs.TimeRange
+		if err := json.Unmarshal(b, &got); err != nil {
+			t.Fatalf("%s: %v", b, err)
+		}
+		if got.Last != r.Last || !got.From.Equal(r.From) || !got.To.Equal(r.To) {
+			t.Errorf("%s round-tripped to %+v", b, got)
+		}
+	}
+	if b, _ := json.Marshal(obs.Last(time.Hour)); string(b) != `{"last":"1h"}` {
+		t.Errorf("relative range = %s", b)
+	}
+	for _, bad := range []string{`{}`, `{"last":"soon"}`, `{"from":"2026-11-25T12:00:00Z","to":"2026-11-25T11:00:00Z"}`} {
+		var r obs.TimeRange
+		if err := json.Unmarshal([]byte(bad), &r); err == nil {
+			t.Errorf("%s should fail", bad)
+		}
 	}
 }
