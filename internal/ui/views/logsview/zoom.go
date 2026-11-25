@@ -12,18 +12,35 @@ import (
 // minZoomColumns is the narrowest drag that zooms; a shorter one is a click.
 const minZoomColumns = 2
 
-// dragSpan is a selection being dragged on the timeline, in plot columns.
+// dragSpan is a selection being dragged on the timeline.
 type dragSpan struct {
-	anchor   int // where the button was pressed
-	from, to int // selected columns, inclusive, from <= to
+	anchor   int // plot column where the button was pressed
+	from, to int // selected plot columns, inclusive, from <= to
+	// The selected span as times, computed when the mouse moves (while the
+	// chart geometry of the frame under the pointer is known) and drawn by
+	// the next frames.
+	start, end time.Time
+}
+
+// startDrag begins a selection at plot column col.
+func (m *Model) startDrag(col int) {
+	m.drag = &dragSpan{anchor: col}
+	m.updateDrag(col)
 }
 
 func (m *Model) onDragMove(mouse tea.Mouse) {
 	if m.drag == nil {
 		return
 	}
-	col := clampIndex(mouse.X-m.hits.plotX, m.hits.plotW-1)
-	m.drag.from, m.drag.to = min(m.drag.anchor, col), max(m.drag.anchor, col)
+	m.updateDrag(mouse.X - m.hits.plotX)
+}
+
+func (m *Model) updateDrag(col int) {
+	col = clampIndex(col, m.hits.plotW-1)
+	d := m.drag
+	d.from, d.to = min(d.anchor, col), max(d.anchor, col)
+	d.start = m.hits.timeAt(d.from, m.histFrom, m.histTo)
+	d.end = m.hits.timeAt(d.to+1, m.histFrom, m.histTo)
 }
 
 func (m *Model) onDragEnd(mouse tea.Mouse) tea.Cmd {
@@ -36,9 +53,18 @@ func (m *Model) onDragEnd(mouse tea.Mouse) tea.Cmd {
 	if d.to-d.from+1 < minZoomColumns {
 		return nil
 	}
-	from := m.hits.timeAt(d.from, m.histFrom, m.histTo)
-	to := m.hits.timeAt(d.to+1, m.histFrom, m.histTo)
-	return m.zoomTo(obs.Between(from.Truncate(time.Second), to.Add(time.Second-1).Truncate(time.Second)))
+	return m.zoomTo(obs.Between(d.start.Truncate(time.Second), d.end.Add(time.Second-1).Truncate(time.Second)))
+}
+
+// dragLabel describes the span being selected, e.g. "15:35:27 → 15:39:37 · 4m10s".
+func (m *Model) dragLabel() string {
+	d, loc := m.drag, m.location()
+	layout := "15:04:05"
+	if d.end.Sub(d.start) > 24*time.Hour || d.start.In(loc).YearDay() != d.end.In(loc).YearDay() {
+		layout = "01-02 15:04"
+	}
+	return d.start.In(loc).Format(layout) + " → " + d.end.In(loc).Format(layout) +
+		" · " + d.end.Sub(d.start).Round(time.Second).String() + " · release to zoom"
 }
 
 // zoomTo searches rng, remembering the current range for zooming out.

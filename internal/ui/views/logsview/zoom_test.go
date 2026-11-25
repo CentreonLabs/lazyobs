@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/CentreonLabs/lazyobs/internal/obs"
 	"github.com/CentreonLabs/lazyobs/internal/source/fake"
@@ -149,5 +150,44 @@ func TestStatusBarShortcutsFollowState(t *testing.T) {
 	plain := newHarness(t, Options{})
 	if strings.Contains(plain.d.Screen(), "a ask") {
 		t.Error("ask must not be listed without a translator")
+	}
+}
+
+func TestDragHighlightsTheSelectionAsTheMouseMoves(t *testing.T) {
+	h := newHarness(t, Options{})
+	hits := h.rendered()
+	y := screenY(hits.plotY + 2)
+	x0 := hits.plotX + 10
+	frame := func() string { return h.d.Model.View().Content }
+
+	before := frame()
+	h.d.Click(x0, y, tea.MouseLeft, 0)
+	h.d.Send(tea.MouseMotionMsg{X: x0 + 5, Y: y, Button: tea.MouseLeft})
+	short := frame()
+	h.d.Send(tea.MouseMotionMsg{X: x0 + 25, Y: y, Button: tea.MouseLeft})
+	long := frame()
+
+	if short == before || long == short {
+		t.Fatal("each mouse move must redraw the highlighted span")
+	}
+	body := func(s string) string { s = ansi.Strip(s); return s[:strings.LastIndex(s, "\n")] } // without the status bar
+	if body(long) != body(before) {
+		t.Error("the highlight must only change colors, not the content")
+	}
+	if len(long) <= len(short) {
+		t.Error("a wider selection should style more cells")
+	}
+	if s := h.d.Screen(); !strings.Contains(s, "→") || !strings.Contains(s, "release to zoom") {
+		t.Errorf("the selected span must be shown while dragging:\n%s", s[strings.LastIndex(s, "\n")+1:])
+	}
+
+	// Dragging back left of the anchor selects the other side.
+	h.d.Send(tea.MouseMotionMsg{X: x0 - 6, Y: y, Button: tea.MouseLeft})
+	if d := h.view.drag; d.from != 4 || d.to != 10 || !d.start.Before(d.end) {
+		t.Errorf("drag = %+v", d)
+	}
+	h.d.Send(tea.MouseReleaseMsg{X: x0 - 6, Y: y, Button: tea.MouseLeft})
+	if h.view.drag != nil {
+		t.Error("release must end the selection")
 	}
 }

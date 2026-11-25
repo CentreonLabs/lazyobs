@@ -59,9 +59,8 @@ func (m *Model) renderTimeline(width, height, originX, originY int) string {
 		marker = m.records[m.cursor].Timestamp
 	}
 	var selFrom, selTo time.Time
-	if d := m.drag; d != nil && m.hits.plotW > 0 {
-		selFrom = m.hits.timeAt(d.from, m.histFrom, m.histTo)
-		selTo = m.hits.timeAt(d.to+1, m.histFrom, m.histTo)
+	if d := m.drag; d != nil {
+		selFrom, selTo = d.start, d.end
 	}
 	out, layout := chart.Render(chart.Options{
 		Width:      width,

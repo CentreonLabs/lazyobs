@@ -43,8 +43,7 @@ func (h hitAreas) timeAt(col int, from, to time.Time) time.Time {
 func (m *Model) onClick(mouse tea.Mouse) tea.Cmd {
 	h := m.hits
 	if mouse.Button == tea.MouseLeft && h.inPlot(mouse.X, mouse.Y) && len(m.hist) > 0 {
-		col := mouse.X - h.plotX
-		m.drag = &dragSpan{anchor: col, from: col, to: col}
+		m.startDrag(mouse.X - h.plotX)
 		return nil
 	}
 	if mouse.Y == h.legendY {

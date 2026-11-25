@@ -356,6 +356,8 @@ func (m *Model) maybeLoadMore() tea.Cmd {
 // Status implements app.SignalView.
 func (m *Model) Status() string {
 	switch {
+	case m.drag != nil && m.drag.to > m.drag.from:
+		return m.th.Key.Render(m.dragLabel())
 	case m.tail != nil && m.tail.Paused():
 		return m.th.Badge.Background(m.th.Warning).Render(pausedLabel(m.tail.Buffered()))
 	case m.tail != nil && m.liveErrs > 0:
