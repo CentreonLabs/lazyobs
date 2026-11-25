@@ -1,0 +1,140 @@
+package fake_test
+
+import (
+	"context"
+	"encoding/json"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/CentreonLabs/lazyobs/internal/obs"
+	"github.com/CentreonLabs/lazyobs/internal/obs/logs"
+	"github.com/CentreonLabs/lazyobs/internal/source/fake"
+)
+
+var now = time.Date(2026, 11, 25, 12, 0, 0, 0, time.UTC)
+
+func clock(t time.Time) func() time.Time { return func() time.Time { return t } }
+
+func search(t *testing.T, src *fake.Logs, q obs.Query) obs.Page[logs.Record] {
+	t.Helper()
+	p, err := src.Search(context.Background(), q)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+func TestDeterministicAndOrdered(t *testing.T) {
+	q := obs.Query{Range: obs.Last(10 * time.Minute), Limit: 50}
+	a := search(t, fake.NewLogs(42, clock(now)), q)
+	b := search(t, fake.NewLogs(42, clock(now)), q)
+	if a.Total == 0 || len(a.Items) != 50 || a.Total != b.Total {
+		t.Fatalf("total=%d/%d items=%d", a.Total, b.Total, len(a.Items))
+	}
+	for i := range a.Items {
+		if a.Items[i].Fingerprint() != b.Items[i].Fingerprint() {
+			t.Fatal("same seed must give the same records")
+		}
+		if i > 0 && a.Items[i].Timestamp.After(a.Items[i-1].Timestamp) {
+			t.Fatal("records must be sorted newest first")
+		}
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(a.Items[0].Raw, &doc); err != nil || doc["service_name"] != a.Items[0].Service {
+		t.Errorf("raw document invalid: %s", a.Items[0].Raw)
+	}
+}
+
+func TestPaginationCoversEverythingOnce(t *testing.T) {
+	src := fake.NewLogs(7, clock(now))
+	q := obs.Query{Range: obs.Last(5 * time.Minute), Limit: 37}
+	seen := map[uint64]bool{}
+	var total int64
+	for pages := 0; ; pages++ {
+		p := search(t, src, q)
+		total = p.Total
+		for _, r := range p.Items {
+			if seen[r.Fingerprint()] {
+				t.Fatalf("duplicate record on page %d", pages)
+			}
+			seen[r.Fingerprint()] = true
+		}
+		if p.Next == nil {
+			break
+		}
+		q.Cursor = p.Next
+	}
+	if int64(len(seen)) != total {
+		t.Fatalf("collected %d records, total says %d", len(seen), total)
+	}
+}
+
+func TestFilters(t *testing.T) {
+	src := fake.NewLogs(1, clock(now))
+	all := search(t, src, obs.Query{Range: obs.Last(30 * time.Minute), Limit: 1000})
+	errs := search(t, src, obs.Query{Text: "severity_text:ERROR", Range: obs.Last(30 * time.Minute), Limit: 1000})
+	if errs.Total == 0 || errs.Total >= all.Total {
+		t.Fatalf("error filter total=%d of %d", errs.Total, all.Total)
+	}
+	for _, r := range errs.Items {
+		if r.Severity != logs.SeverityError {
+			t.Fatalf("filter leaked %v", r.Severity)
+		}
+	}
+	words := search(t, src, obs.Query{Text: "service_name:checkout AND timeout", Range: obs.Last(30 * time.Minute), Limit: 1000})
+	for _, r := range words.Items {
+		if r.Service != "checkout" || !strings.Contains(r.Body, "timeout") {
+			t.Fatalf("unexpected match %s %q", r.Service, r.Body)
+		}
+	}
+	if _, err := src.Search(context.Background(), obs.Query{Text: "foo:(", Range: obs.Last(time.Minute)}); err == nil {
+		t.Error("unsupported syntax must fail like the real API")
+	}
+}
+
+func TestNoFutureAndLiveArrival(t *testing.T) {
+	t0 := now
+	src := fake.NewLogs(3, func() time.Time { return t0 })
+	q := obs.Query{Range: obs.Between(now.Add(-time.Minute), now.Add(time.Hour)), Limit: 1000}
+	before := search(t, src, q)
+	for _, r := range before.Items {
+		if !r.Timestamp.Before(now) {
+			t.Fatal("records from the future")
+		}
+	}
+	t0 = now.Add(30 * time.Second)
+	after := search(t, src, q)
+	if after.Total <= before.Total {
+		t.Fatalf("new records should arrive as time passes: %d → %d", before.Total, after.Total)
+	}
+}
+
+func TestHistogramMatchesTotal(t *testing.T) {
+	src := fake.NewLogs(5, clock(now))
+	q := obs.Query{Range: obs.Last(time.Hour)}
+	series, err := src.Histogram(context.Background(), q, 60)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(series) != 1 || len(series[0].Points) != 60 {
+		t.Fatalf("series = %d, points = %d", len(series), len(series[0].Points))
+	}
+	var sum float64
+	for _, p := range series[0].Points {
+		sum += p.Value
+	}
+	if total := search(t, src, obs.Query{Range: q.Range, Limit: 1}).Total; int64(sum) != total {
+		t.Fatalf("histogram sum %v != total %d", sum, total)
+	}
+}
+
+func TestLatencyRespectsContext(t *testing.T) {
+	src := fake.NewLogs(1, clock(now))
+	src.Latency = time.Hour
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := src.Search(ctx, obs.Query{Range: obs.Last(time.Minute)}); err == nil {
+		t.Fatal("expected context error")
+	}
+}
