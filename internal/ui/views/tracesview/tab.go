@@ -20,6 +20,9 @@ func (m *Model) Title() string {
 		}
 		return "⌁ " + name
 	}
+	if m.topo != nil {
+		return "service map · " + shortRange(m.rng)
+	}
 	q := strings.TrimSpace(m.query)
 	if q == "" || q == "*" {
 		q = "all traces"
@@ -54,6 +57,7 @@ type State struct {
 	UTC     bool          `json:"utc,omitempty"`
 	Compact bool          `json:"compact,omitempty"`
 	Trace   string        `json:"trace,omitempty"` // open waterfall
+	Map     bool          `json:"map,omitempty"`   // service map shown
 }
 
 // Snapshot captures the state to save.
@@ -62,6 +66,7 @@ func (m *Model) Snapshot() State {
 	if m.trace != nil {
 		s.Trace = m.trace.id
 	}
+	s.Map = m.topo != nil
 	return s
 }
 
@@ -75,6 +80,9 @@ func Restore(opts Options, s State) *Model {
 	m.utc, m.compact = s.UTC, s.Compact
 	if s.Trace != "" {
 		m.trace = &openTrace{id: s.Trace, loading: true}
+	}
+	if s.Map && opts.Topology != nil {
+		m.topo = &topology{loading: true}
 	}
 	return m
 }

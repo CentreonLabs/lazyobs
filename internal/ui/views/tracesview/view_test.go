@@ -29,7 +29,7 @@ func newHarness(t *testing.T, build func(Options) *Model) *harness {
 	src := fake.NewTraces(5, func() time.Time { return now })
 	th := theme.New(true)
 	opts := Options{
-		Source: src, Histogram: src, Fetcher: src, Theme: th, Now: func() time.Time { return now },
+		Source: src, Histogram: src, Fetcher: src, Topology: src, Theme: th, Now: func() time.Time { return now },
 		OpenLogs: func(query string, rng obs.TimeRange) tea.Cmd {
 			h.logsAsks = append(h.logsAsks, query+" @ "+rng.String())
 			return nil
@@ -161,5 +161,84 @@ func TestChartZoomAndHover(t *testing.T) {
 	h.d.Keys("-")
 	if h.view.rng != DefaultRange {
 		t.Fatal("- must zoom out")
+	}
+}
+
+func TestServiceMap(t *testing.T) {
+	h := newHarness(t, nil)
+	h.d.Keys("m")
+	if h.view.topo == nil || h.view.topo.loading || len(h.view.topo.layout.Boxes) < 5 {
+		t.Fatalf("map not loaded: %+v", h.view.topo)
+	}
+	s := h.d.Screen()
+	for _, want := range []string{"Service map", "demo-gateway", "demo-payments", "p95", "▶", "CALLS", "enter: traces starting here"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("map misses %q:\n%s", want, s)
+		}
+	}
+	if !strings.Contains(h.view.Title(), "service map") {
+		t.Errorf("title = %q", h.view.Title())
+	}
+
+	// Select the gateway, entry point of every demo trace.
+	for i := 0; h.view.topo.layout.Boxes[h.view.topo.selected].Name != "demo-gateway"; i++ {
+		if i > 20 {
+			t.Fatal("gateway not found")
+		}
+		h.d.Keys("j")
+	}
+	if !strings.Contains(h.d.Screen(), "→ demo-") {
+		t.Error("callees of the gateway not listed")
+	}
+
+	h.d.Keys("v")
+	if s := h.d.Screen(); !h.view.topo.table || !strings.Contains(s, "SPANS") || !strings.Contains(s, "P99") {
+		t.Fatalf("v must show the table:\n%s", s)
+	}
+	h.d.Keys("v")
+
+	h.d.Keys("l")
+	if len(h.logsAsks) != 1 || !strings.HasPrefix(h.logsAsks[0], "service_name:demo-gateway") {
+		t.Errorf("logs of the service: %v", h.logsAsks)
+	}
+
+	s2 := h.view.Snapshot()
+	if !s2.Map {
+		t.Error("the open map must be saved")
+	}
+	r := newHarness(t, func(o Options) *Model { return Restore(o, s2) })
+	if r.view.topo == nil || len(r.view.topo.layout.Boxes) == 0 {
+		t.Error("the map must be restored")
+	}
+
+	h.d.Keys("enter")
+	if h.view.topo != nil || h.view.query != "service_name:demo-gateway" || len(h.view.items) == 0 {
+		t.Fatalf("enter must list the traces starting in the service: query %q, %d traces", h.view.query, len(h.view.items))
+	}
+}
+
+func TestServiceMapFollowsTheRangeAndClicks(t *testing.T) {
+	h := newHarness(t, nil)
+	h.d.Keys("m")
+	before := h.view.topo.data.Services[0].Spans
+	h.d.Keys("t", "ctrl+u")
+	h.d.Type("15m")
+	h.d.Keys("enter")
+	if h.view.topo == nil || h.view.topo.data.Services[0].Spans >= before {
+		t.Fatalf("the map must follow a narrower range (spans %d → %v)", before, h.view.topo)
+	}
+	// Click a box.
+	_ = h.d.Screen()
+	tp := h.view.topo
+	target := tp.layout.Boxes[len(tp.layout.Boxes)-1]
+	x := target.X - tp.x0 + tp.mapX + 2
+	y := target.Y - tp.y0 + tp.mapY + 1 + 1 // body row → screen row
+	h.d.Click(x, y, tea.MouseLeft, 0)
+	if got := tp.layout.Boxes[tp.selected].Name; got != target.Name {
+		t.Errorf("click selected %s, want %s", got, target.Name)
+	}
+	h.d.Keys("esc")
+	if h.view.topo != nil {
+		t.Error("esc must close the map")
 	}
 }

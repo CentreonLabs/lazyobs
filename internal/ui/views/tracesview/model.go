@@ -38,6 +38,7 @@ type Options struct {
 	Source    obs.Searcher[traces.Trace]
 	Histogram obs.Histogrammer // optional
 	Fetcher   traces.Fetcher
+	Topology  traces.TopologyReader // optional, enables the service map
 	Theme     *theme.Theme
 	Query     string
 	Range     obs.TimeRange // DefaultRange when zero
@@ -93,6 +94,8 @@ type Model struct {
 
 	// The open trace (waterfall), nil in list mode.
 	trace *openTrace
+	// The service map, nil when not shown.
+	topo *topology
 
 	utc bool
 }
@@ -186,6 +189,10 @@ func (m *Model) Update(msg tea.Msg) (app.SignalView, tea.Cmd) {
 		if msg.view == m.id {
 			return m, m.onTrace(msg)
 		}
+	case topologyMsg:
+		if msg.view == m.id {
+			m.onTopology(msg)
+		}
 	case tea.MouseClickMsg:
 		return m, m.onClick(msg.Mouse())
 	case tea.MouseMotionMsg:
@@ -210,7 +217,7 @@ func (m *Model) search() tea.Cmd {
 	m.items, m.err, m.hist = nil, nil, nil
 	m.cursor, m.top = 0, 0
 	m.loading = true
-	return tea.Batch(m.fetchPage(), m.fetchHistogram())
+	return tea.Batch(m.fetchPage(), m.fetchHistogram(), m.fetchTopology())
 }
 
 func (m *Model) fetchPage() tea.Cmd {
@@ -286,8 +293,10 @@ func (m *Model) ShortHelp() []key.Binding {
 		return []key.Binding{k.Submit, k.Cancel}
 	case m.trace != nil:
 		return []key.Binding{short(k.Down, "span"), k.Logs, k.Copy, short(k.Close, "back to traces")}
+	case m.topo != nil:
+		return []key.Binding{short(k.Down, "service"), short(k.Open, "traces from it"), short(k.Logs, "its logs"), short(k.Layout, "map/table"), short(k.Close, "back")}
 	}
-	b := []key.Binding{k.Query, short(k.Range, "range"), short(k.Open, "waterfall"), k.Sort, k.Logs}
+	b := []key.Binding{k.Query, short(k.Range, "range"), short(k.Open, "waterfall"), k.Sort, k.Logs, short(k.Map, "service map")}
 	if len(m.zoomStack) > 0 {
 		b = append(b, k.ZoomOut)
 	}

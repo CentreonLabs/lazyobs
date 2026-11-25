@@ -43,6 +43,7 @@ type traceSource interface {
 	obs.Searcher[traces.Trace]
 	obs.Histogrammer
 	traces.Fetcher
+	traces.TopologyReader
 }
 
 // Signal tab titles, also used to route between them.
@@ -96,7 +97,7 @@ func (a *app) runTUI(ctx context.Context, opts tuiOptions) error {
 	th := theme.New(true) // refined once the terminal reports its background
 	logOpts, traceOpts := linkSignals(
 		logsview.Options{Source: src, Histogram: src, Breakdown: src, Fields: fields, Translator: translator, Theme: th},
-		tracesview.Options{Source: tsrc, Histogram: tsrc, Fetcher: tsrc, Theme: th},
+		tracesview.Options{Source: tsrc, Histogram: tsrc, Fetcher: tsrc, Topology: tsrc, Theme: th},
 	)
 	store := session.Store{Path: session.DefaultPath(a.env.Getenv)}
 	tracesKey := sessionKey + "#traces"

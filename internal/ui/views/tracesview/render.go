@@ -29,6 +29,9 @@ func (m *Model) View(width, height int) string {
 	if m.trace != nil {
 		return bar + "\n" + m.renderWaterfall(width, max(height-1, 3))
 	}
+	if m.topo != nil {
+		return bar + "\n" + m.renderTopology(width, max(height-1, 3))
+	}
 	timeline, timelineH := m.renderSpark(), 1
 	if th := m.timelineHeight(); th > 0 {
 		timeline = m.panel("Traces over time", m.renderChart(width-2, th-2, 1, 2), width-2, th-2, false)

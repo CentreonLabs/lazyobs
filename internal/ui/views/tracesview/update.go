@@ -20,8 +20,15 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 	if m.trace != nil {
 		return m.waterfallKey(msg)
 	}
+	if m.topo != nil {
+		if cmd, ok := m.topologyKey(msg); ok {
+			return cmd
+		}
+	}
 	k := m.keys
 	switch {
+	case key.Matches(msg, k.Map):
+		return m.openTopology()
 	case key.Matches(msg, k.Query):
 		return m.openInput(modeQuery, m.query, "service_name:demo-gateway AND span_status.code:error")
 	case key.Matches(msg, k.Range):
@@ -219,7 +226,7 @@ func (m *Model) onClick(mouse tea.Mouse) tea.Cmd {
 		return nil
 	}
 	h := m.hits
-	if m.trace == nil && h.inPlot(mouse.X, mouse.Y) {
+	if m.trace == nil && m.topo == nil && h.inPlot(mouse.X, mouse.Y) {
 		col := mouse.X - h.plotX
 		m.drag = &dragSpan{anchor: col, from: col, to: col}
 		return nil
@@ -228,6 +235,10 @@ func (m *Model) onClick(mouse tea.Mouse) tea.Cmd {
 		if i := m.trace.top + mouse.Y - h.rowsTop; mouse.Y >= h.rowsTop && i < len(m.trace.nodes) {
 			m.trace.selected = i
 		}
+		return nil
+	}
+	if m.topo != nil {
+		m.clickMap(mouse.X, mouse.Y)
 		return nil
 	}
 	if row := mouse.Y - h.listTop; row >= 0 && row < h.listN && m.top+row < len(m.items) {

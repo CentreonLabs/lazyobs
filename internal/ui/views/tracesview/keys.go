@@ -9,7 +9,7 @@ import (
 type keyMap struct {
 	keys.List
 	Query, Range, Refresh, Open, Close, Sort, Logs, Copy, UTC, Layout key.Binding
-	ZoomOut, Earlier, Later                                           key.Binding
+	ZoomOut, Earlier, Later, Map                                      key.Binding
 	Submit, Cancel, NextPreset                                        key.Binding
 }
 
@@ -27,6 +27,7 @@ func defaultKeys() keyMap {
 		UTC:     key.NewBinding(key.WithKeys("z"), key.WithHelp("z", "local/UTC time")),
 		Layout:  key.NewBinding(key.WithKeys("v"), key.WithHelp("v", "split/compact chart")),
 		ZoomOut: key.NewBinding(key.WithKeys("-"), key.WithHelp("-", "zoom out")),
+		Map:     key.NewBinding(key.WithKeys("m"), key.WithHelp("m", "service map")),
 		Earlier: key.NewBinding(key.WithKeys("shift+left", "["), key.WithHelp("⇧← [", "move back in time")),
 		Later:   key.NewBinding(key.WithKeys("shift+right", "]"), key.WithHelp("⇧→ ]", "move forward in time")),
 
@@ -38,7 +39,7 @@ func defaultKeys() keyMap {
 
 func (k keyMap) help() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Query, k.Range, k.Open, k.Close, k.Sort, k.Logs},
+		{k.Query, k.Range, k.Open, k.Close, k.Sort, k.Logs, k.Map},
 		k.Bindings(),
 		{k.ZoomOut, k.Earlier, k.Later, k.Refresh, k.Copy, k.UTC, k.Layout},
 	}

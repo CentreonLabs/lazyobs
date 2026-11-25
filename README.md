@@ -27,6 +27,7 @@ observability data without leaving the terminal.
 - Traces (beta on the platform): trace list sorted by time or duration, volume and errors over
   time, and a waterfall of each trace's spans with their details
 - Navigate between signals: a log's trace (`T`), a trace's logs (`l`)
+- Service map: services and their calls drawn as a graph, with p50/p95/p99 and errors (`m`)
 - A `--demo` mode with synthetic data, no account needed
 
 ## Installation
@@ -85,7 +86,9 @@ The time span mentioned in the question, if any, replaces the current range.
 In the **traces** screen (`2`): `/` searches root spans (the platform matches the root span of each
 trace), `s` sorts by start time or duration, `enter` opens the waterfall, where `j`/`k` select a span
 and `ctrl+d`/`ctrl+u` scroll its details, `l` shows the logs of the trace and `y` copies the span;
-`esc` goes back to the list. Time range, zoom and moves work as for logs.
+`esc` goes back to the list. Time range, zoom and moves work as for logs. `m` shows the service
+map of the time range: `j`/`k` (or a click) select a service and show its latencies and calls,
+`enter` lists the traces starting in it, `l` shows its logs and `v` switches to a table.
 
 Live mode polls every 10 seconds and re-queries the last minute to catch logs indexed late.
 
