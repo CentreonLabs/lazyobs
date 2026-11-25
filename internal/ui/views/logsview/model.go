@@ -158,6 +158,11 @@ func New(opts Options) *Model {
 	}
 	in := textinput.New()
 	in.Prompt = ""
+	in.KeyMap = editKeys()
+	// A steady cursor: blinking redraws the screen twice a second for nothing.
+	styles := in.Styles()
+	styles.Cursor.Blink = false
+	in.SetStyles(styles)
 	return &Model{
 		id:     nextViewID.Add(1),
 		opts:   opts,
@@ -189,7 +194,7 @@ func (m *Model) ShortHelp() []key.Binding {
 		case m.compl.open():
 			return []key.Binding{short(k.Submit, "search"), short(k.SuggestNext, "choose"), k.Accept, short(k.Cancel, "close list")}
 		}
-		return []key.Binding{short(k.Submit, "search"), k.Cancel}
+		return []key.Binding{short(k.Submit, "search"), k.Cancel, short(k.DeleteWord, "word"), short(k.ClearLine, "clear")}
 	case modeRange:
 		return []key.Binding{k.NextPreset, k.Submit, k.Cancel}
 	case modeAsk:

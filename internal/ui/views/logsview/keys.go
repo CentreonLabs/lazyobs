@@ -40,6 +40,10 @@ type keyMap struct {
 	SuggestNext key.Binding
 	SuggestPrev key.Binding
 
+	// Text editing (handled by the input, listed for help).
+	DeleteWord key.Binding
+	ClearLine  key.Binding
+
 	// Input mode.
 	Submit     key.Binding
 	Cancel     key.Binding
@@ -81,6 +85,9 @@ func defaultKeys() keyMap {
 		SuggestNext: key.NewBinding(key.WithKeys("down", "ctrl+n"), key.WithHelp("↓", "next suggestion")),
 		SuggestPrev: key.NewBinding(key.WithKeys("up", "ctrl+p"), key.WithHelp("↑", "previous suggestion")),
 
+		DeleteWord: key.NewBinding(key.WithKeys("alt+backspace"), key.WithHelp("⌥⌫ ⇧⌫ ctrl+w", "typing: delete a word")),
+		ClearLine:  key.NewBinding(key.WithKeys("ctrl+u"), key.WithHelp("⌘⌫ ctrl+u", "typing: delete to the start")),
+
 		Submit:     key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "apply")),
 		Cancel:     key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
 		NextPreset: key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next preset")),
@@ -92,6 +99,7 @@ func (k keyMap) help() [][]key.Binding {
 		{k.Query, k.Ask, k.Range, k.Detail, k.Context, k.Live, k.Pause},
 		k.Bindings(),
 		{k.FilterIn, k.FilterOut, k.ZoomOut, k.Earlier, k.Later, k.Refresh, k.Focus, k.Close, k.Copy, k.UTC, k.Layout},
+		{k.DeleteWord, k.ClearLine},
 		{k.MouseHover, k.MouseZoom, k.MouseToggle, k.MouseSolo, k.MouseSelect, k.MouseWheel},
 	}
 }
