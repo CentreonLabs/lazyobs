@@ -174,12 +174,15 @@ func (l *Logs) Histogram(ctx context.Context, q obs.Query, buckets int) ([]obs.S
 	return series, nil
 }
 
-func (l *Logs) wait(ctx context.Context) error {
-	if l.Latency <= 0 {
+func (l *Logs) wait(ctx context.Context) error { return wait(ctx, l.Latency) }
+
+// wait mimics network latency, honoring cancellation.
+func wait(ctx context.Context, latency time.Duration) error {
+	if latency <= 0 {
 		return ctx.Err()
 	}
 	select {
-	case <-time.After(l.Latency):
+	case <-time.After(latency):
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
@@ -380,11 +383,33 @@ func unquote(v string) string {
 
 func (f filter) isEmpty() bool { return len(f.groups) == 0 }
 
+// document is what a filter sees of an item: its text (matched by bare
+// words and the text fields) and a lookup of its other fields.
+type document struct {
+	text       string
+	textFields []string // fields matched by substring against text
+	field      func(name string) (string, bool)
+}
+
 func (f filter) match(r logs.Record) bool {
+	return f.matchDoc(document{
+		text:       r.Body,
+		textFields: []string{"body", "body.message"},
+		field: func(name string) (string, bool) {
+			if v, ok := fieldValue(r, name); ok {
+				return v, true
+			}
+			v, ok := r.Attributes[name] // bare attribute name
+			return fmt.Sprint(v), ok
+		},
+	})
+}
+
+func (f filter) matchDoc(d document) bool {
 	for _, g := range f.groups {
 		all := true
 		for _, t := range g.terms {
-			if t.matches(r) == t.negated {
+			if t.matches(d) == t.negated {
 				all = false
 				break
 			}
@@ -396,19 +421,11 @@ func (f filter) match(r logs.Record) bool {
 	return true
 }
 
-func (t filterTerm) matches(r logs.Record) bool {
+func (t filterTerm) matches(d document) bool {
 	want := strings.ToLower(t.value)
-	switch t.field {
-	case "", "body", "body.message":
-		return strings.Contains(strings.ToLower(r.Body), want)
+	if t.field == "" || slices.Contains(d.textFields, t.field) {
+		return strings.Contains(strings.ToLower(d.text), want)
 	}
-	got, ok := fieldValue(r, t.field)
-	if !ok {
-		v, found := r.Attributes[t.field] // bare attribute name
-		if !found {
-			return false
-		}
-		got = fmt.Sprint(v)
-	}
-	return strings.EqualFold(got, want)
+	got, ok := d.field(t.field)
+	return ok && strings.EqualFold(got, want)
 }
