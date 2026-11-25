@@ -37,16 +37,32 @@ contexts:
     token-file: ~/.config/lazyobs/token # or token: / token-command:
 ```
 
-Environment variables override the active context:
+Set it up from the command line, kubectl-style:
+
+```sh
+lazyobs config set-context prod --org my-org --token-file ~/.config/lazyobs/token
+lazyobs config set-context staging --org my-org-staging --token-command "op read op://vault/lazyobs/token"
+lazyobs config get-contexts
+lazyobs config use-context staging
+lazyobs config view    # effective settings and where each one comes from
+lazyobs config check   # verify the platform is reachable
+```
+
+The token is never accepted as a command-line flag, so it cannot end up in your shell history.
+
+Precedence: command-line flags (`--context`, `--org`, `--url`, `--config`), then environment
+variables, then the context.
 
 | Variable          | Meaning                 |
 | ----------------- | ----------------------- |
+| `LAZYOBS_CONFIG`  | Configuration file path |
+| `LAZYOBS_CONTEXT` | Context to use          |
 | `LAZYOBS_URL`     | API base URL            |
 | `LAZYOBS_ORG`     | Organization code       |
 | `LAZYOBS_TOKEN`   | API token (`X-Api-Key`) |
-| `LAZYOBS_CONTEXT` | Context to use          |
 
-Keep the token file readable only by you (`chmod 600`). lazyobs never prints or logs the token.
+Keep the token file readable only by you (`chmod 600`); lazyobs warns otherwise. It never prints
+or logs the token.
 
 ## Development
 

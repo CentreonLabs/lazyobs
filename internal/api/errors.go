@@ -30,7 +30,7 @@ func (e *Error) Error() string {
 func (e *Error) Hint() string {
 	switch e.StatusCode {
 	case http.StatusUnauthorized:
-		return "the API token is missing, invalid or expired"
+		return "the API token is missing, invalid or expired, or the organization code is wrong"
 	case http.StatusPaymentRequired:
 		return "log management is not enabled for this organization"
 	case http.StatusForbidden:

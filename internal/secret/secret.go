@@ -42,6 +42,14 @@ func (s String) LogValue() slog.Value { return slog.StringValue(s.placeholder())
 // MarshalText implements encoding.TextMarshaler (used by JSON and YAML encoders).
 func (s String) MarshalText() ([]byte, error) { return []byte(s.placeholder()), nil }
 
+// UnmarshalText implements encoding.TextUnmarshaler so secrets can be decoded
+// from configuration files. Note that marshaling back is redacted: never
+// round-trip a struct holding a secret to rewrite a file.
+func (s *String) UnmarshalText(b []byte) error {
+	s.value = string(b)
+	return nil
+}
+
 func (s String) placeholder() string {
 	if s.value == "" {
 		return ""

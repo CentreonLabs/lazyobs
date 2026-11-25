@@ -2,17 +2,24 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 
-	"github.com/CentreonLabs/lazyobs/internal/version"
+	"github.com/CentreonLabs/lazyobs/internal/cli"
+	"github.com/CentreonLabs/lazyobs/internal/config"
 )
 
-func main() {
-	if len(os.Args) > 1 && os.Args[1] == "version" {
-		fmt.Println(version.String())
-		return
+func main() { os.Exit(run()) }
+
+func run() int {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	if err := cli.NewRootCommand(config.OSEnv, os.Stdout, os.Stderr).ExecuteContext(ctx); err != nil {
+		fmt.Fprintln(os.Stderr, "lazyobs:", err)
+		return 1
 	}
-	fmt.Fprintln(os.Stderr, "lazyobs: the TUI is not implemented yet; try `lazyobs version`")
-	os.Exit(1)
+	return 0
 }

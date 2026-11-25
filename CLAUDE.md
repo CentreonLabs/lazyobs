@@ -43,6 +43,7 @@ Adding a signal = domain type in `obs/<signal>`, mapping in `api/`, `remote` sea
 - Spec: https://docs-api.centreon.com/api/centreon-log-management/openapi.json
 - Base URL: `https://api.euwest1.obs.mycentreon.com`; only region for now.
 - Auth: header `X-Api-Key` (M2M token). Org in path: `/v1/orgs/{org}/...`, pattern `^[a-zA-Z0-9-_]{1,50}$`.
+- A wrong organization code also returns **401** (not 403/404).
 - M2M tokens get **401** on `/v1/orgs`, `/v1/orgs/{org}`, `/bookmarks`. Validate a profile with a `max_hits=0` search instead.
 - `GET|POST /v1/orgs/{org}/logs/search`: Quickwit query syntax; `start`/`end` are Unix **seconds** (negative `start` is relative to `end`); `max_hits` ≤ 1000 (default 20); `start_offset` ≤ **10 000**.
 - Response: `{hits: [...], num_hits, elapsed_time_micros, errors: []}`. The spec types `hits` as a bare object; it is an array of flat OTel-like records: `timestamp_nanos`, `observed_timestamp_nanos`, `severity_text`, `severity_number`, `service_name`, `scope_name`, `scope_version`, `trace_flags`, `body` (object, e.g. `{message}`), `resource_attributes` (object). Treat other fields (`attributes`, `trace_id`, `span_id`) as optional.

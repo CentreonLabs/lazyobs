@@ -53,6 +53,16 @@ func TestReveal(t *testing.T) {
 	}
 }
 
+func TestUnmarshalText(t *testing.T) {
+	var v struct{ Token secret.String }
+	if err := json.Unmarshal([]byte(`{"Token":"`+raw+`"}`), &v); err != nil {
+		t.Fatal(err)
+	}
+	if v.Token.Reveal() != raw {
+		t.Fatalf("decoded %q", v.Token.Reveal())
+	}
+}
+
 func TestZero(t *testing.T) {
 	var s secret.String
 	if !s.IsZero() || s.String() != "" {
