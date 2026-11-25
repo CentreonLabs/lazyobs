@@ -68,10 +68,20 @@ var _ app.SignalView = (*Model)(nil)
 
 // New returns a tab set named name (shown in the header) with one tab.
 func New(name string, th *theme.Theme, first Child) *Model {
+	return NewWithTabs(name, th, []Child{first}, 0)
+}
+
+// NewWithTabs returns a tab set with several tabs (at least one), the
+// active one being selected (e.g. when restoring a session).
+func NewWithTabs(name string, th *theme.Theme, tabs []Child, active int) *Model {
+	if len(tabs) > MaxTabs {
+		tabs = tabs[:MaxTabs]
+	}
 	return &Model{
-		name: name,
-		tabs: []Child{first},
-		th:   th,
+		name:   name,
+		tabs:   tabs,
+		active: min(max(active, 0), len(tabs)-1),
+		th:     th,
 		keys: keyMap{
 			New:   key.NewBinding(key.WithKeys("ctrl+t"), key.WithHelp("ctrl+t", "new tab from this one")),
 			Close: key.NewBinding(key.WithKeys("ctrl+w"), key.WithHelp("ctrl+w", "close tab")),
@@ -84,8 +94,14 @@ func New(name string, th *theme.Theme, first Child) *Model {
 // Name implements app.SignalView.
 func (m *Model) Name() string { return m.name }
 
-// Init implements app.SignalView.
-func (m *Model) Init() tea.Cmd { return m.tabs[0].Init() }
+// Init implements app.SignalView: every tab starts its search.
+func (m *Model) Init() tea.Cmd {
+	cmds := make([]tea.Cmd, 0, len(m.tabs))
+	for _, t := range m.tabs {
+		cmds = append(cmds, t.Init())
+	}
+	return tea.Batch(cmds...)
+}
 
 // Len is the number of tabs.
 func (m *Model) Len() int { return len(m.tabs) }
@@ -95,6 +111,9 @@ func (m *Model) Active() int { return m.active }
 
 // Tab returns the view of tab i.
 func (m *Model) Tab(i int) Child { return m.tabs[i] }
+
+// Tabs returns the views of every tab, in order.
+func (m *Model) Tabs() []Child { return append([]Child(nil), m.tabs...) }
 
 // Update implements app.SignalView.
 func (m *Model) Update(msg tea.Msg) (app.SignalView, tea.Cmd) {
@@ -240,8 +259,9 @@ func (m *Model) View(width, height int) string {
 
 func (m *Model) renderBar(width int) string {
 	t := m.th
+	// Titles get the room first; the hint only shows if it still fits.
 	hint := t.Dim.Render("  ctrl+t new · < > switch · ctrl+w close")
-	room := width - ansi.StringWidth(hint) - 4 // "+" button and margins
+	room := width - 4 // "+" button and margins
 	titleW := min(max(room/len(m.tabs)-8, minTitle), maxTitle)
 
 	m.hits = m.hits[:0]
