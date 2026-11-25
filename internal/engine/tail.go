@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/CentreonLabs/lazyobs/internal/obs"
@@ -47,9 +48,12 @@ type TailUpdate[T any] struct {
 }
 
 // Tail follows new items of a search by polling, like tail -f.
-// It is not safe for concurrent use: call Poll once at a time and schedule
-// the next call after NextDelay.
+//
+// Call Poll once at a time and schedule the next call after NextDelay. The
+// other methods may be called while a Poll is running (e.g. pausing from the
+// UI while a request is in flight).
 type Tail[T any] struct {
+	mu   sync.Mutex
 	src  obs.Searcher[T]
 	text string
 	opts TailOptions[T]
@@ -88,6 +92,8 @@ func NewTail[T any](src obs.Searcher[T], text string, since time.Time, opts Tail
 // Seed marks items already displayed (e.g. the latest search results) so the
 // first polls do not return them again.
 func (t *Tail[T]) Seed(items []T) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	for _, it := range items {
 		ts := t.opts.Timestamp(it)
 		t.seen[t.opts.Key(it)] = ts
@@ -99,13 +105,19 @@ func (t *Tail[T]) Seed(items []T) {
 
 // Poll fetches the items that arrived since the previous poll.
 func (t *Tail[T]) Poll(ctx context.Context) (TailUpdate[T], error) {
+	t.mu.Lock()
 	now := t.opts.Now()
 	from := t.watermark.Add(-t.opts.Overlap)
+	t.mu.Unlock()
+
 	page, err := t.src.Search(ctx, obs.Query{
 		Text:  t.text,
 		Range: obs.Between(from, now.Add(time.Second)), // include the current second
 		Limit: t.opts.Limit,
 	})
+
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	if err != nil {
 		t.failures++
 		return TailUpdate[T]{Buffered: len(t.buffer)}, err
@@ -161,6 +173,8 @@ func (t *Tail[T]) prune() {
 // NextDelay is the wait before the next poll: the interval, doubled after
 // each consecutive failure up to two minutes.
 func (t *Tail[T]) NextDelay() time.Duration {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	d := t.opts.Interval
 	for range t.failures {
 		d *= 2
@@ -172,21 +186,39 @@ func (t *Tail[T]) NextDelay() time.Duration {
 }
 
 // Failures is the number of consecutive failed polls.
-func (t *Tail[T]) Failures() int { return t.failures }
+func (t *Tail[T]) Failures() int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.failures
+}
 
 // Pause keeps polling but buffers new items instead of returning them.
-func (t *Tail[T]) Pause() { t.paused = true }
+func (t *Tail[T]) Pause() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.paused = true
+}
 
 // Paused reports whether the tail is paused.
-func (t *Tail[T]) Paused() bool { return t.paused }
+func (t *Tail[T]) Paused() bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.paused
+}
 
 // Resume returns the buffered items (newest first) and how many were dropped
 // because the buffer was full, then clears the buffer.
 func (t *Tail[T]) Resume() (items []T, dropped int) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	items, dropped = t.buffer, t.dropped
 	t.paused, t.buffer, t.dropped = false, nil, 0
 	return items, dropped
 }
 
 // Buffered is the number of items waiting while paused.
-func (t *Tail[T]) Buffered() int { return len(t.buffer) }
+func (t *Tail[T]) Buffered() int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return len(t.buffer)
+}

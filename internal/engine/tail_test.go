@@ -159,3 +159,22 @@ func TestTailSamplingWarning(t *testing.T) {
 		t.Fatalf("items=%d warnings=%v", len(u.Items), u.Warnings)
 	}
 }
+
+func TestTailPauseDuringPoll(t *testing.T) {
+	c := &clock{now}
+	src := fake.NewLogs(2, c.now)
+	src.Latency = 20 * time.Millisecond
+	opts := engine.TailOptions[logs.Record]{Key: key, Timestamp: func(r logs.Record) time.Time { return r.Timestamp }, Now: c.now}
+	tail := engine.NewTail[logs.Record](src, "", now.Add(-time.Minute), opts)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_, _ = tail.Poll(context.Background())
+	}()
+	tail.Pause()
+	_ = tail.Buffered()
+	<-done
+	if items, _ := tail.Resume(); len(items) == 0 {
+		t.Error("items polled while pausing must be buffered")
+	}
+}
