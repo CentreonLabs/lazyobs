@@ -306,20 +306,13 @@ func (f filter) isEmpty() bool { return len(f.fields) == 0 && len(f.words) == 0 
 
 func (f filter) match(r logs.Record) bool {
 	for k, want := range f.fields {
-		var got string
-		switch k {
-		case "service_name":
-			got = r.Service
-		case "severity_text":
-			got = r.SeverityText
-		default:
-			v, ok := r.Attributes[strings.TrimPrefix(k, "attributes.")]
-			if !ok {
-				return false
+		got, ok := fieldValue(r, k)
+		if !ok {
+			if v, found := r.Attributes[k]; found { // bare attribute name
+				got, ok = fmt.Sprint(v), true
 			}
-			got = fmt.Sprint(v)
 		}
-		if !strings.EqualFold(got, want) {
+		if !ok || !strings.EqualFold(got, want) {
 			return false
 		}
 	}

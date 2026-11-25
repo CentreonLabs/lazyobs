@@ -15,7 +15,7 @@ const serviceLookBack = 7 * 24 * time.Hour
 // TranslatorAPI is the subset of the API client used by Translator.
 type TranslatorAPI interface {
 	TranslateQuery(ctx context.Context, req api.TranslateRequest) (*api.TranslateResponse, error)
-	LogFieldTerms(ctx context.Context, field string, from, to time.Time, maxTerms int) ([]api.Term, error)
+	LogFieldTerms(ctx context.Context, field, prefix string, from, to time.Time, maxTerms int) ([]api.Term, error)
 }
 
 // Translator turns natural language into log queries with the platform's
@@ -67,7 +67,7 @@ func (t *Translator) knownServices(ctx context.Context) []string {
 		return t.services
 	}
 	now := t.now()
-	terms, err := t.api.LogFieldTerms(ctx, "service_name", now.Add(-serviceLookBack), now, 100)
+	terms, err := t.api.LogFieldTerms(ctx, "service_name", "", now.Add(-serviceLookBack), now, 100)
 	if err != nil {
 		return nil
 	}

@@ -37,6 +37,7 @@ type Options struct {
 	Source     obs.Searcher[logs.Record]
 	Histogram  obs.Histogrammer    // optional
 	Translator obs.QueryTranslator // optional, enables natural-language queries
+	Fields     obs.FieldSuggester  // optional, enables query autocompletion
 	Theme      *theme.Theme
 	Query      string
 	Range      obs.TimeRange // DefaultRange when zero
@@ -120,6 +121,9 @@ type Model struct {
 	zoomStack []obs.TimeRange
 	hover     *chart.Cell // pointer over the timeline plot, nil otherwise
 
+	// Query autocompletion.
+	compl completion
+
 	// Natural-language queries.
 	lastPrompt  string
 	translating bool
@@ -169,6 +173,17 @@ func (m *Model) Help() [][]key.Binding { return m.keys.help() }
 // make sense in the current state.
 func (m *Model) ShortHelp() []key.Binding {
 	k := m.keys
+	switch m.mode {
+	case modeQuery:
+		if m.compl.open() {
+			return []key.Binding{k.Accept, short(k.SuggestNext, "choose"), short(k.Submit, "search"), short(k.Cancel, "close list")}
+		}
+		return []key.Binding{short(k.Submit, "search"), k.Cancel}
+	case modeRange:
+		return []key.Binding{k.NextPreset, k.Submit, k.Cancel}
+	case modeAsk:
+		return []key.Binding{short(k.Submit, "ask"), k.Cancel}
+	}
 	b := []key.Binding{k.Query}
 	if m.opts.Translator != nil {
 		b = append(b, short(k.Ask, "ask"))
@@ -281,6 +296,12 @@ func (m *Model) Update(msg tea.Msg) (app.SignalView, tea.Cmd) {
 		return m, m.onTail(msg)
 	case translateMsg:
 		return m, m.onTranslate(msg)
+	case fieldsMsg:
+		return m, m.onFields(msg)
+	case suggestTickMsg:
+		return m, m.onSuggestTick(msg)
+	case valuesMsg:
+		return m, m.onValues(msg)
 	case tea.MouseMotionMsg:
 		m.onMouseMove(msg.Mouse())
 		return m, nil

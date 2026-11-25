@@ -43,3 +43,25 @@ type Translation struct {
 type QueryTranslator interface {
 	Translate(ctx context.Context, prompt string) (Translation, error)
 }
+
+// Field is a searchable field of a signal.
+type Field struct {
+	Name string
+	Type string // keyword, text, long, double, boolean, ip, date_nanos, binary
+	// Aggregatable fields can list their most frequent values.
+	Aggregatable bool
+}
+
+// FieldValue is a value of a field with its number of occurrences.
+type FieldValue struct {
+	Value string
+	Count int64
+}
+
+// FieldSuggester lists fields and their frequent values over a time window,
+// to help writing queries.
+type FieldSuggester interface {
+	Fields(ctx context.Context, from, to time.Time) ([]Field, error)
+	// Values returns the most frequent values of field starting with prefix.
+	Values(ctx context.Context, field, prefix string, from, to time.Time, limit int) ([]FieldValue, error)
+}

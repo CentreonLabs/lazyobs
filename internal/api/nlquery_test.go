@@ -62,16 +62,34 @@ func TestTranslateTimeHints(t *testing.T) {
 func TestLogFieldTerms(t *testing.T) {
 	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/v1/orgs/my-org_1/logs/fields/service_name/terms" ||
-			r.URL.Query().Get("maxTerms") != "100" || r.URL.Query().Get("startTimestamp") != "1700000000" {
+			r.URL.Query().Get("maxTerms") != "100" || r.URL.Query().Get("startTimestamp") != "1700000000" ||
+			r.URL.Query().Get("filter") != "a" {
 			t.Errorf("unexpected %s", r.URL)
 		}
 		_, _ = w.Write([]byte(`[{"value":"api","count":12},{"value":404,"count":3}]`))
 	})
-	terms, err := c.LogFieldTerms(context.Background(), "service_name", time.Unix(1700000000, 0), time.Unix(1700003600, 0), 500)
+	terms, err := c.LogFieldTerms(context.Background(), "service_name", "a", time.Unix(1700000000, 0), time.Unix(1700003600, 0), 500)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(terms) != 2 || terms[0].String() != "api" || terms[1].String() != "404" || terms[0].Count != 12 {
 		t.Errorf("terms = %+v", terms)
+	}
+}
+
+func TestLogFieldCapabilities(t *testing.T) {
+	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/orgs/my-org_1/logs/fields/capabilities" || r.URL.Query().Get("endTimestamp") != "1700003600" {
+			t.Errorf("unexpected %s", r.URL)
+		}
+		_, _ = w.Write([]byte(`{"fields":{"service_name":{"keyword":{"type":"keyword","searchable":true,"aggregatable":true}},` +
+			`"body.message":{"text":{"type":"text","searchable":true,"aggregatable":false}}}}`))
+	})
+	fields, err := c.LogFieldCapabilities(context.Background(), time.Unix(1700000000, 0), time.Unix(1700003600, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !fields["service_name"]["keyword"].Aggregatable || fields["body.message"]["text"].Aggregatable || !fields["body.message"]["text"].Searchable {
+		t.Errorf("fields = %+v", fields)
 	}
 }

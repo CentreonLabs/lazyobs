@@ -17,7 +17,7 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 	k := m.keys
 	switch {
 	case key.Matches(msg, k.Query):
-		return m.openInput(modeQuery, m.query, "service_name:api AND severity_text:ERROR")
+		return tea.Batch(m.openInput(modeQuery, m.query, "service_name:api AND severity_text:ERROR"), m.startCompletion())
 	case key.Matches(msg, k.Ask):
 		return m.openAsk()
 	case key.Matches(msg, k.ZoomOut):
@@ -146,9 +146,13 @@ func (m *Model) openInput(mode inputMode, value, placeholder string) tea.Cmd {
 func (m *Model) closeInput() {
 	m.mode = modeNormal
 	m.input.Blur()
+	m.compl.items = nil
 }
 
 func (m *Model) updateInput(msg tea.KeyPressMsg) tea.Cmd {
+	if cmd, ok := m.completionKey(msg); ok {
+		return cmd
+	}
 	switch {
 	case key.Matches(msg, m.keys.Cancel):
 		m.closeInput()
@@ -163,7 +167,7 @@ func (m *Model) updateInput(msg tea.KeyPressMsg) tea.Cmd {
 	}
 	var cmd tea.Cmd
 	m.input, cmd = m.input.Update(msg)
-	return cmd
+	return tea.Batch(cmd, m.refreshCompletion())
 }
 
 func (m *Model) submitInput() tea.Cmd {

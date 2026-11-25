@@ -23,7 +23,7 @@ func (s *translatorStub) TranslateQuery(_ context.Context, req api.TranslateRequ
 	return s.resp, nil
 }
 
-func (s *translatorStub) LogFieldTerms(context.Context, string, time.Time, time.Time, int) ([]api.Term, error) {
+func (s *translatorStub) LogFieldTerms(context.Context, string, string, time.Time, time.Time, int) ([]api.Term, error) {
 	s.termCalls++
 	if s.termsErr != nil {
 		return nil, s.termsErr

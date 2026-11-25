@@ -10,6 +10,7 @@ observability data without leaving the terminal.
 ## Features
 
 - Search logs with the Quickwit query syntax over a relative or absolute time range
+- Query autocompletion: field names, then their most frequent values over the displayed period
 - Ask in plain words ("errors from checkout in the last hour"), translated to a query by the
   platform
 - Zoom on a time span by dragging on the chart
@@ -45,6 +46,7 @@ lazyobs --demo                                   # try it without an account
 | ------------------------------------ | ----------------------------------------------------------- |
 | `j`/`k`, `g`/`G`, `ctrl+d/u`         | Move in the list (or the focused panel)                     |
 | `/`                                  | Edit the query                                              |
+| `tab`, `↑`/`↓` while typing a query  | Accept / choose a suggested field or value                  |
 | `a`                                  | Ask in plain words (natural-language query)                 |
 | `t`                                  | Time range (`tab` cycles presets)                           |
 | hover the chart                      | Tooltip with the values of each level in that bucket        |

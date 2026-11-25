@@ -43,7 +43,7 @@ func newHarnessWith(t *testing.T, opts Options, restore *State) *harness {
 	h := &harness{clock: &clock{time.Date(2026, 11, 25, 12, 0, 0, 0, time.UTC)}}
 	src := fake.NewLogs(8, h.clock.now)
 	th := theme.New(true)
-	opts.Source, opts.Histogram, opts.Theme, opts.Now = src, src, th, h.clock.now
+	opts.Source, opts.Histogram, opts.Fields, opts.Theme, opts.Now = src, src, src, th, h.clock.now
 	opts.After = func(_ time.Duration, msg tea.Msg) tea.Cmd {
 		h.ticks = append(h.ticks, msg)
 		return nil

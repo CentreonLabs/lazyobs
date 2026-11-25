@@ -55,7 +55,7 @@ func (m *Model) View(width, height int) string {
 		m.hits.listRight, m.hits.detailActive, m.hits.listRows = 0, true, 0
 		panels = m.box("Details", m.detail.View(), width-2, panelH-2, true)
 	}
-	return lipgloss.JoinVertical(lipgloss.Left, bar, timeline, panels)
+	return m.overlayCompletion(lipgloss.JoinVertical(lipgloss.Left, bar, timeline, panels))
 }
 
 // listRows is the number of records visible in the list.
@@ -66,7 +66,7 @@ func (m *Model) renderBar() string {
 	var left string
 	switch m.mode {
 	case modeQuery:
-		left = t.Key.Render("query › ") + m.input.View()
+		left = t.Key.Render(queryPrompt) + m.input.View()
 	case modeRange:
 		left = t.Key.Render("range › ") + m.input.View() + t.Dim.Render("  tab: "+strings.Join(rangePresets, " "))
 	case modeAsk:

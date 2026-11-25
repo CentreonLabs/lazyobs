@@ -4,10 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
-	"net/url"
-	"strconv"
 	"time"
 )
 
@@ -61,32 +58,4 @@ func (c *Client) TranslateQuery(ctx context.Context, req TranslateRequest) (*Tra
 		return nil, err
 	}
 	return &resp, nil
-}
-
-// Term is a value found in a field, with its number of occurrences.
-type Term struct {
-	Value any   `json:"value"`
-	Count int64 `json:"count"`
-}
-
-// LogFieldTerms returns the most frequent values of a log field over [from, to).
-func (c *Client) LogFieldTerms(ctx context.Context, field string, from, to time.Time, maxTerms int) ([]Term, error) {
-	q := url.Values{}
-	q.Set("startTimestamp", strconv.FormatInt(from.Unix(), 10))
-	q.Set("endTimestamp", strconv.FormatInt(to.Unix(), 10))
-	q.Set("maxTerms", strconv.Itoa(min(max(maxTerms, 1), 100)))
-	var terms []Term
-	endpoint := c.orgURL("logs", "fields", field, "terms") + "?" + q.Encode()
-	if err := c.do(ctx, http.MethodGet, endpoint, nil, &terms); err != nil {
-		return nil, err
-	}
-	return terms, nil
-}
-
-// String renders a term value.
-func (t Term) String() string {
-	if s, ok := t.Value.(string); ok {
-		return s
-	}
-	return fmt.Sprint(t.Value)
 }

@@ -46,6 +46,7 @@ func (a *app) runTUI(ctx context.Context, opts tuiOptions) error {
 
 	var (
 		src        logSource
+		fields     obs.FieldSuggester
 		translator obs.QueryTranslator
 		label      string
 		sessionKey string // what the saved session belongs to
@@ -53,7 +54,7 @@ func (a *app) runTUI(ctx context.Context, opts tuiOptions) error {
 	if opts.demo {
 		f := fake.NewLogs(uint64(time.Now().UnixNano()), nil) //nolint:gosec // seed only
 		f.Latency = 150 * time.Millisecond
-		src, translator, label, sessionKey = f, fake.Translator{}, "demo data", "demo"
+		src, fields, translator, label, sessionKey = f, f, fake.Translator{}, "demo data", "demo"
 	} else {
 		r, err := a.resolve(ctx)
 		if err != nil {
@@ -65,6 +66,7 @@ func (a *app) runTUI(ctx context.Context, opts tuiOptions) error {
 		}
 		src = remote.NewLogs(client, nil)
 		translator = remote.NewTranslator(client, nil)
+		fields = remote.NewFields(client)
 		label = r.Org
 		sessionKey = "org:" + r.Org + "@" + r.URL
 		if r.Context != "" {
@@ -74,7 +76,7 @@ func (a *app) runTUI(ctx context.Context, opts tuiOptions) error {
 	}
 
 	th := theme.New(true) // refined once the terminal reports its background
-	viewOpts := logsview.Options{Source: src, Histogram: src, Translator: translator, Theme: th}
+	viewOpts := logsview.Options{Source: src, Histogram: src, Fields: fields, Translator: translator, Theme: th}
 	store := session.Store{Path: session.DefaultPath(a.env.Getenv)}
 
 	// Reopen the last session unless the command line asks for a new search.

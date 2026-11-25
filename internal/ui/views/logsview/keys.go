@@ -32,6 +32,11 @@ type keyMap struct {
 	MouseSelect key.Binding
 	MouseWheel  key.Binding
 
+	// Query autocompletion.
+	Accept      key.Binding
+	SuggestNext key.Binding
+	SuggestPrev key.Binding
+
 	// Input mode.
 	Submit     key.Binding
 	Cancel     key.Binding
@@ -63,6 +68,10 @@ func defaultKeys() keyMap {
 		MouseSolo:   mouseHelp("right-click level", "show only it"),
 		MouseSelect: mouseHelp("click row", "select log"),
 		MouseWheel:  mouseHelp("wheel", "scroll"),
+
+		Accept:      key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "complete")),
+		SuggestNext: key.NewBinding(key.WithKeys("down", "ctrl+n"), key.WithHelp("↓", "next suggestion")),
+		SuggestPrev: key.NewBinding(key.WithKeys("up", "ctrl+p"), key.WithHelp("↑", "previous suggestion")),
 
 		Submit:     key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "apply")),
 		Cancel:     key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
