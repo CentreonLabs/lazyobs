@@ -20,7 +20,7 @@ func (m *Model) layoutDetail() {
 		w = m.width - m.width*55/100
 	}
 	m.detail.SetWidth(max(w-2, 10))
-	m.detail.SetHeight(max(m.height-barLines-2, 1))
+	m.detail.SetHeight(max(m.layout().panels-2, 1))
 }
 
 // setDetail refreshes the detail panel with the selected record.

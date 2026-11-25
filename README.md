@@ -10,7 +10,8 @@ observability data without leaving the terminal.
 ## Features
 
 - Search logs with the Quickwit query syntax over a relative or absolute time range
-- Volume histogram of the matching logs
+- Split screen: a timeline of the matching logs on top (with the selected log marked), the
+  log list below
 - Endless list (past the API's 10 000 offset limit) with a detail panel: attributes,
   resource, trace IDs and raw JSON
 - Live mode (like `tail -f`) with pause/resume
@@ -47,6 +48,7 @@ lazyobs --demo                                   # try it without an account
 | `r`                          | Refresh                                    |
 | `y`                          | Copy the selected log as JSON              |
 | `z`                          | Toggle local time / UTC                    |
+| `v`                          | Split timeline / compact sparkline         |
 | `1` `2` `3`                  | Switch signal (logs; traces, metrics soon) |
 | `?`                          | Help                                       |
 | `q`                          | Quit                                       |

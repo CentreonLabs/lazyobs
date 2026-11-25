@@ -18,6 +18,7 @@ type keyMap struct {
 	Pause   key.Binding
 	Copy    key.Binding
 	UTC     key.Binding
+	Layout  key.Binding
 
 	// Input mode.
 	Submit     key.Binding
@@ -38,6 +39,7 @@ func defaultKeys() keyMap {
 		Pause:   key.NewBinding(key.WithKeys("space"), key.WithHelp("space", "pause live")),
 		Copy:    key.NewBinding(key.WithKeys("y"), key.WithHelp("y", "copy log JSON")),
 		UTC:     key.NewBinding(key.WithKeys("z"), key.WithHelp("z", "local/UTC time")),
+		Layout:  key.NewBinding(key.WithKeys("v"), key.WithHelp("v", "split/compact timeline")),
 
 		Submit:     key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "apply")),
 		Cancel:     key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
@@ -49,6 +51,6 @@ func (k keyMap) help() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Query, k.Range, k.Detail, k.Live, k.Pause},
 		k.Bindings(),
-		{k.Refresh, k.Focus, k.Close, k.Copy, k.UTC},
+		{k.Refresh, k.Focus, k.Close, k.Copy, k.UTC, k.Layout},
 	}
 }

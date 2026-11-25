@@ -81,6 +81,9 @@ type Model struct {
 	err      error
 	elapsed  time.Duration
 	hist     []obs.Point
+	histFrom time.Time
+	histTo   time.Time
+	histCols int // number of buckets last requested
 
 	cursor, top int
 
@@ -99,7 +102,8 @@ type Model struct {
 	liveNew  int
 	liveErrs int
 
-	utc bool
+	utc     bool
+	compact bool // timeline shown as a one-line sparkline
 }
 
 var _ app.SignalView = (*Model)(nil)
@@ -156,9 +160,10 @@ type (
 		elapsed  time.Duration
 	}
 	histMsg struct {
-		id     int
-		series []obs.Series
-		err    error
+		id       int
+		from, to time.Time
+		series   []obs.Series
+		err      error
 	}
 	tailTickMsg struct{ gen int }
 	tailMsg     struct {
@@ -175,12 +180,16 @@ func (m *Model) Update(msg tea.Msg) (app.SignalView, tea.Cmd) {
 	case app.ResizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		m.layoutDetail()
+		m.scrollToCursor()
+		if m.pager != nil && m.timelineColumns() != m.histCols {
+			return m, m.fetchHistogram() // match the new width
+		}
 		return m, nil
 	case pageMsg:
 		return m, m.onPage(msg)
 	case histMsg:
 		if msg.id == m.searchID && msg.err == nil && len(msg.series) > 0 {
-			m.hist = msg.series[0].Points
+			m.hist, m.histFrom, m.histTo = msg.series[0].Points, msg.from, msg.to
 		}
 		return m, nil
 	case tailTickMsg:
@@ -206,6 +215,7 @@ func (m *Model) search() tea.Cmd {
 	now := m.opts.Now()
 	m.pager = engine.NewPager(m.opts.Source, obs.Query{Text: m.query, Range: m.rng, Limit: m.opts.PageSize}, now, logs.Record.Fingerprint)
 	m.records, m.hist, m.err = nil, nil, nil
+	m.histFrom, m.histTo = time.Time{}, time.Time{}
 	m.cursor, m.top, m.liveNew = 0, 0, 0
 	m.loading = true
 	m.setDetail()
@@ -229,12 +239,17 @@ func (m *Model) fetchHistogram() tea.Cmd {
 	}
 	id, h := m.searchID, m.opts.Histogram
 	q := m.pager.Query()
-	buckets := max(m.width-12, 10)
+	if m.tail != nil {
+		q.Range = m.rng.Pin(m.opts.Now()) // live: the timeline follows the clock
+	}
+	from, to := q.Range.Resolve(m.opts.Now())
+	buckets := m.timelineColumns()
+	m.histCols = buckets
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
 		series, err := h.Histogram(ctx, q, buckets)
-		return histMsg{id: id, series: series, err: err}
+		return histMsg{id: id, from: from, to: to, series: series, err: err}
 	}
 }
 

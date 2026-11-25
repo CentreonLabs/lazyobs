@@ -31,6 +31,11 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 		m.utc = !m.utc
 		m.setDetail()
 		return nil
+	case key.Matches(msg, k.Layout):
+		m.compact = !m.compact
+		m.layoutDetail()
+		m.scrollToCursor()
+		return m.fetchHistogram() // the number of columns changed
 	case key.Matches(msg, k.Copy):
 		return m.copySelected()
 	case key.Matches(msg, k.Detail):
@@ -42,6 +47,8 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 		return nil
 	case key.Matches(msg, k.Close):
 		m.showDetail, m.focus = false, focusList
+		m.layoutDetail()
+		m.scrollToCursor()
 		return nil
 	case key.Matches(msg, k.Focus):
 		if m.showDetail {
@@ -78,7 +85,7 @@ func (m *Model) moveCursor(msg tea.KeyPressMsg) tea.Cmd {
 	default:
 		return nil
 	}
-	m.cursor = clamp(m.cursor, 0, len(m.records)-1)
+	m.cursor = clampIndex(m.cursor, len(m.records)-1)
 	m.scrollToCursor()
 	if m.cursor != prev {
 		m.setDetail()
@@ -117,7 +124,7 @@ func (m *Model) scrollToCursor() {
 	if m.cursor >= m.top+rows {
 		m.top = m.cursor - rows + 1
 	}
-	m.top = clamp(m.top, 0, max(len(m.records)-rows, 0))
+	m.top = clampIndex(m.top, max(len(m.records)-rows, 0))
 }
 
 func (m *Model) openInput(mode inputMode, value, placeholder string) tea.Cmd {
@@ -192,9 +199,10 @@ func rangeInputValue(r obs.TimeRange, loc *time.Location) string {
 	return r.From.In(loc).Format(time.DateTime) + " .. " + r.To.In(loc).Format(time.DateTime)
 }
 
-func clamp(v, lo, hi int) int {
-	if hi < lo {
-		return lo
+// clampIndex bounds v to [0, hi], returning 0 when hi is negative.
+func clampIndex(v, hi int) int {
+	if hi < 0 {
+		return 0
 	}
-	return min(max(v, lo), hi)
+	return min(max(v, 0), hi)
 }

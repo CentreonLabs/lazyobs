@@ -21,15 +21,17 @@ const (
 	sparkBlocks     = "▁▂▃▄▅▆▇█"
 )
 
-// Layout: query bar (1 line), histogram (1 line), then bordered panels.
-const barLines = 2
-
-// View implements app.SignalView.
+// View implements app.SignalView. The body is the query bar, the timeline
+// (half of the height, or a one-line sparkline) and the list/detail panels.
 func (m *Model) View(width, height int) string {
 	m.width, m.height = width, height
+	lay := m.layout()
 	bar := m.renderBar()
-	spark := m.renderSpark()
-	panelH := max(height-barLines, 3)
+	timeline := m.renderSpark()
+	if lay.timeline > 0 {
+		timeline = m.box(m.renderTimeline(width-2, lay.timeline-2), width-2, lay.timeline-2, false)
+	}
+	panelH := lay.panels
 
 	var panels string
 	switch {
@@ -45,11 +47,11 @@ func (m *Model) View(width, height int) string {
 	default:
 		panels = m.box(m.detail.View(), width-2, panelH-2, true)
 	}
-	return lipgloss.JoinVertical(lipgloss.Left, bar, spark, panels)
+	return lipgloss.JoinVertical(lipgloss.Left, bar, timeline, panels)
 }
 
 // listRows is the number of records visible in the list.
-func (m *Model) listRows() int { return max(m.height-barLines-2-1, 1) } // borders and column header
+func (m *Model) listRows() int { return max(m.layout().panels-2-1, 1) } // borders and column header
 
 func (m *Model) renderBar() string {
 	t := m.th

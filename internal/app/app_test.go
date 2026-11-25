@@ -65,11 +65,16 @@ func TestNavigationAndDetail(t *testing.T) {
 	d.Keys("j", "j", "enter")
 	screen := d.Screen()
 	dump(t, d)
-	for _, want := range []string{"severity", "service", "MESSAGE", "ATTRIBUTES", "http.method", "RESOURCE", "RAW"} {
+	for _, want := range []string{"severity", "service", "MESSAGE", "ATTRIBUTES", "http.method"} {
 		if !strings.Contains(screen, want) {
 			t.Errorf("detail misses %q", want)
 		}
 	}
+	d.Keys("tab", "G") // focus the detail panel and scroll to its end
+	if s := d.Screen(); !strings.Contains(s, `"trace_flags"`) || !strings.Contains(s, "TIME") {
+		t.Errorf("detail should scroll to the raw document, list unchanged:\n%s", s)
+	}
+	d.Keys("tab")
 	d.Keys("esc")
 	if strings.Contains(d.Screen(), "ATTRIBUTES") {
 		t.Error("esc must close the detail panel")
@@ -156,4 +161,36 @@ func TestInfiniteScroll(t *testing.T) {
 	}
 	d.Keys("g")
 	dump(t, d)
+}
+
+func TestTimelineLayouts(t *testing.T) {
+	d := start(t, 120, 40, logsview.Options{})
+	s := d.Screen()
+	if !strings.Contains(s, "timeline") || !strings.Contains(s, "logs per") || !strings.Contains(s, "12:00") {
+		t.Fatalf("split timeline missing:\n%s", s)
+	}
+	// The timeline takes about half of the body: the list header is in the lower half.
+	header := -1
+	for i, l := range lines(s) {
+		if strings.Contains(l, "TIME") && strings.Contains(l, "LEVEL") {
+			header = i
+		}
+	}
+	if header < 18 || header > 24 {
+		t.Errorf("list header on line %d, expected around the middle of 40 lines", header)
+	}
+
+	d.Keys("v")
+	if s := d.Screen(); strings.Contains(s, "logs per") {
+		t.Fatalf("v must collapse the timeline:\n%s", s)
+	}
+	d.Keys("v")
+	if !strings.Contains(d.Screen(), "logs per") {
+		t.Fatal("v must restore the split view")
+	}
+
+	small := start(t, 120, 16, logsview.Options{})
+	if strings.Contains(small.Screen(), "logs per") {
+		t.Error("short terminals must use the compact timeline")
+	}
 }
