@@ -124,6 +124,11 @@ type Model struct {
 	// Query autocompletion.
 	compl completion
 
+	// The log this view was opened around (see openContext), 0 if none.
+	anchor      uint64
+	anchorFound bool
+	anchorPages int
+
 	// Natural-language queries.
 	lastPrompt  string
 	translating bool
@@ -191,7 +196,11 @@ func (m *Model) ShortHelp() []key.Binding {
 	if m.opts.Translator != nil {
 		b = append(b, short(k.Ask, "ask"))
 	}
-	b = append(b, short(k.Range, "range"), k.Detail, short(k.Live, "live"))
+	b = append(b, short(k.Range, "range"), k.Detail)
+	if m.showDetail {
+		b = append(b, short(k.Context, "around"))
+	}
+	b = append(b, short(k.Live, "live"))
 	if m.tail != nil {
 		b = append(b, short(k.Pause, "pause"))
 	}
@@ -389,6 +398,9 @@ func (m *Model) onPage(msg pageMsg) tea.Cmd {
 	}
 	if first && m.live && m.tail == nil {
 		cmds = append(cmds, m.startTail())
+	}
+	if cmd := m.findAnchor(); cmd != nil {
+		return tea.Batch(append(cmds, cmd)...)
 	}
 	cmds = append(cmds, m.maybeLoadMore())
 	return tea.Batch(cmds...)

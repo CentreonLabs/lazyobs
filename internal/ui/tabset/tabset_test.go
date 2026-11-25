@@ -199,3 +199,34 @@ func TestRestoredTabs(t *testing.T) {
 		t.Errorf("background tab did not search:\n%s", d.Screen())
 	}
 }
+
+func TestOpenLogsAroundOne(t *testing.T) {
+	h := newHarness(t)
+	h.d.Keys("j", "j", "j")
+	origin := h.tabs.Tab(0).(*logsview.Model).Selected()
+
+	h.d.Keys("c")
+	if h.tabs.Len() != 2 || h.tabs.Active() != 1 {
+		t.Fatalf("len %d, active %d", h.tabs.Len(), h.tabs.Active())
+	}
+	ctx := h.tabs.Tab(1).(*logsview.Model)
+	s := ctx.Snapshot()
+	if s.Query != "service_name:"+origin.Service {
+		t.Errorf("query = %q, want the service of the log", s.Query)
+	}
+	if s.Range.IsRelative() || s.Range.From.After(origin.Timestamp.Add(-29*time.Second)) || s.Range.To.Before(origin.Timestamp.Add(30*time.Second)) {
+		t.Errorf("range %v is not ±30s around %v", s.Range, origin.Timestamp)
+	}
+	if got := ctx.Selected(); got.Fingerprint() != origin.Fingerprint() {
+		t.Fatalf("the original log must be selected in the new tab, got %v", got.Timestamp)
+	}
+	screen := h.d.Screen()
+	if !strings.Contains(screen, "◆") || !strings.Contains(screen, "Details") || !strings.Contains(screen, "logs around") {
+		t.Errorf("anchor mark, detail panel or notice missing:\n%s", screen)
+	}
+
+	h.d.Keys("<")
+	if h.tabs.Tab(0).(*logsview.Model).Selected().Fingerprint() != origin.Fingerprint() {
+		t.Error("the first tab must keep its selection")
+	}
+}

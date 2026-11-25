@@ -156,12 +156,20 @@ func (m *Model) renderList(width, height int) string {
 		svc := fmt.Sprintf("%-*s", svcW, ansi.Truncate(r.Service, svcW, "…"))
 		msgW := max(width-len(timeLayout)-5-svcW-6, 1)
 		msg := ansi.Truncate(oneLine(r.Body), msgW, "…")
+		gap := "  "
+		anchor := m.isAnchor(r.Fingerprint())
+		if anchor {
+			gap = " ◆" // the log this tab was opened around
+		}
 		if i == m.cursor {
-			row := fit(fmt.Sprintf("%s  %s  %s  %s", ts, sev, svc, msg), width)
+			row := fit(fmt.Sprintf("%s%s%s  %s  %s", ts, gap, sev, svc, msg), width)
 			lines = append(lines, t.Selected.Render(row))
 			continue
 		}
-		lines = append(lines, t.Dim.Render(ts)+"  "+t.Severity(r.Severity).Render(sev)+"  "+svc+"  "+msg)
+		if anchor {
+			gap = " " + t.Key.Render("◆")
+		}
+		lines = append(lines, t.Dim.Render(ts)+gap+t.Severity(r.Severity).Render(sev)+"  "+svc+"  "+msg)
 	}
 	if m.loading {
 		lines = append(lines, t.Dim.Render("loading more…"))

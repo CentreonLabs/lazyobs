@@ -46,6 +46,8 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 		return m.fetchHistogram() // the number of columns changed
 	case key.Matches(msg, k.Copy):
 		return m.copySelected()
+	case key.Matches(msg, k.Context):
+		return m.openContext()
 	case key.Matches(msg, k.Detail):
 		if len(m.records) > 0 {
 			m.showDetail = true

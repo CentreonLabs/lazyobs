@@ -21,7 +21,7 @@ const (
 	barLines = 1
 	// minTitle is the width below which titles are not shortened further.
 	minTitle = 8
-	maxTitle = 32
+	maxTitle = 40
 )
 
 // Child is a view that can live in a tab.
@@ -32,6 +32,13 @@ type Child interface {
 	// Clone returns a new view starting from this one's state (query, time
 	// range, display preferences), for a new tab.
 	Clone() Child
+}
+
+// OpenMsg asks the tab set holding From to open Child in a new tab, right
+// after the current one, and to select it. Other tab sets ignore it.
+type OpenMsg struct {
+	From  Child
+	Child Child
 }
 
 // Model is a set of tabs.
@@ -122,6 +129,12 @@ func (m *Model) Update(msg tea.Msg) (app.SignalView, tea.Cmd) {
 		m.width, m.height = msg.Width, msg.Height
 		return m, m.broadcast(m.childSize())
 
+	case OpenMsg:
+		if !m.holds(msg.From) {
+			return m, nil
+		}
+		return m, m.open(msg.Child)
+
 	case tea.KeyPressMsg:
 		if !m.current().Capturing() {
 			if cmd, ok := m.handleKey(msg); ok {
@@ -183,18 +196,32 @@ func (m *Model) newTab() tea.Cmd {
 	if len(m.tabs) >= MaxTabs {
 		return app.Notify(app.LevelWarn, "at most %d tabs: close one with ctrl+w", MaxTabs)
 	}
-	tab := m.current().Clone()
+	opened := m.open(m.current().Clone())
+	v, cmd := m.tabs[m.active].Update(tea.KeyPressMsg{Code: '/', Text: "/"})
+	m.tabs[m.active] = v.(Child)
+	return tea.Batch(opened, cmd)
+}
+
+// open inserts tab after the current one, selects and starts it.
+func (m *Model) open(tab Child) tea.Cmd {
+	if len(m.tabs) >= MaxTabs {
+		return app.Notify(app.LevelWarn, "at most %d tabs: close one with ctrl+w", MaxTabs)
+	}
 	m.active++
 	m.tabs = append(m.tabs[:m.active], append([]Child{tab}, m.tabs[m.active:]...)...)
-	var cmds []tea.Cmd
-	cmds = append(cmds, tab.Init())
+	initCmd := tab.Init()
 	v, cmd := tab.Update(m.childSize())
 	m.tabs[m.active] = v.(Child)
-	cmds = append(cmds, cmd)
-	v, cmd = m.tabs[m.active].Update(tea.KeyPressMsg{Code: '/', Text: "/"})
-	m.tabs[m.active] = v.(Child)
-	cmds = append(cmds, cmd)
-	return tea.Batch(cmds...)
+	return tea.Batch(initCmd, cmd)
+}
+
+func (m *Model) holds(c Child) bool {
+	for _, t := range m.tabs {
+		if t == c {
+			return true
+		}
+	}
+	return false
 }
 
 func (m *Model) closeTab(i int) tea.Cmd {

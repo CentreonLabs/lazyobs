@@ -21,6 +21,7 @@ type keyMap struct {
 	Live    key.Binding
 	Pause   key.Binding
 	Copy    key.Binding
+	Context key.Binding
 	UTC     key.Binding
 	Layout  key.Binding
 
@@ -59,6 +60,7 @@ func defaultKeys() keyMap {
 		Live:    key.NewBinding(key.WithKeys("L"), key.WithHelp("L", "live on/off")),
 		Pause:   key.NewBinding(key.WithKeys("space"), key.WithHelp("space", "pause live")),
 		Copy:    key.NewBinding(key.WithKeys("y"), key.WithHelp("y", "copy log JSON")),
+		Context: key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "logs around this one")),
 		UTC:     key.NewBinding(key.WithKeys("z"), key.WithHelp("z", "local/UTC time")),
 		Layout:  key.NewBinding(key.WithKeys("v"), key.WithHelp("v", "split/compact timeline")),
 
@@ -81,7 +83,7 @@ func defaultKeys() keyMap {
 
 func (k keyMap) help() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Query, k.Ask, k.Range, k.Detail, k.Live, k.Pause},
+		{k.Query, k.Ask, k.Range, k.Detail, k.Context, k.Live, k.Pause},
 		k.Bindings(),
 		{k.ZoomOut, k.Earlier, k.Later, k.Refresh, k.Focus, k.Close, k.Copy, k.UTC, k.Layout},
 		{k.MouseHover, k.MouseZoom, k.MouseToggle, k.MouseSolo, k.MouseSelect, k.MouseWheel},

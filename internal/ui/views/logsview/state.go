@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"github.com/CentreonLabs/lazyobs/internal/obs"
+	"github.com/CentreonLabs/lazyobs/internal/obs/logs"
 )
 
 // State is what a logs tab remembers across sessions.
@@ -41,4 +42,12 @@ func Restore(opts Options, s State) *Model {
 		m.hidden[name] = true
 	}
 	return m
+}
+
+// Selected returns the selected log, or a zero record when the list is empty.
+func (m *Model) Selected() logs.Record {
+	if len(m.records) == 0 {
+		return logs.Record{}
+	}
+	return m.records[m.cursor]
 }
