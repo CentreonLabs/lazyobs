@@ -19,6 +19,7 @@ const (
 	cellVGrid
 	cellCross
 	cellMarker
+	cellHover
 	cellData
 )
 
@@ -74,11 +75,12 @@ func (c *canvas) grid(row, col int, kind cellKind) {
 	}
 }
 
-// marker draws a vertical line on the cells of col not used by data.
-func (c *canvas) marker(col int) {
+// marker draws a vertical line (cellMarker or cellHover) on the cells of col
+// not used by data.
+func (c *canvas) marker(col int, kind cellKind) {
 	for y := range c.h {
 		if c.cells[y][col].kind != cellData {
-			c.cells[y][col].kind = cellMarker
+			c.cells[y][col].kind = kind
 		}
 	}
 }
@@ -169,6 +171,8 @@ func (c *canvas) renderRow(row int, series []lipgloss.Style, st Styles) string {
 			ch, style = '┼', &st.Grid
 		case cellMarker:
 			ch, style = '│', &st.Marker
+		case cellHover:
+			ch, style = '│', &st.Hover
 		case cellData:
 			ch, style = brailleBase+cl.dots, &series[cl.series]
 		}

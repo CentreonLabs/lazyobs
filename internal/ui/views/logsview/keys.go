@@ -25,6 +25,7 @@ type keyMap struct {
 	Layout  key.Binding
 
 	// Mouse actions, listed in the help only (their keys never match a key press).
+	MouseHover  key.Binding
 	MouseZoom   key.Binding
 	MouseToggle key.Binding
 	MouseSolo   key.Binding
@@ -56,6 +57,7 @@ func defaultKeys() keyMap {
 		UTC:     key.NewBinding(key.WithKeys("z"), key.WithHelp("z", "local/UTC time")),
 		Layout:  key.NewBinding(key.WithKeys("v"), key.WithHelp("v", "split/compact timeline")),
 
+		MouseHover:  mouseHelp("hover chart", "values of a bucket"),
 		MouseZoom:   mouseHelp("drag on chart", "zoom in"),
 		MouseToggle: mouseHelp("click level", "show/hide it"),
 		MouseSolo:   mouseHelp("right-click level", "show only it"),
@@ -73,7 +75,7 @@ func (k keyMap) help() [][]key.Binding {
 		{k.Query, k.Ask, k.Range, k.Detail, k.Live, k.Pause},
 		k.Bindings(),
 		{k.ZoomOut, k.Earlier, k.Later, k.Refresh, k.Focus, k.Close, k.Copy, k.UTC, k.Layout},
-		{k.MouseZoom, k.MouseToggle, k.MouseSolo, k.MouseSelect, k.MouseWheel},
+		{k.MouseHover, k.MouseZoom, k.MouseToggle, k.MouseSolo, k.MouseSelect, k.MouseWheel},
 	}
 }
 

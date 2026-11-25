@@ -76,6 +76,7 @@ func New(dark bool) *Theme {
 		Axis:      lipgloss.NewStyle().Foreground(t.Muted),
 		Grid:      lipgloss.NewStyle().Foreground(t.Subtle),
 		Marker:    lipgloss.NewStyle().Foreground(t.Accent),
+		Hover:     lipgloss.NewStyle().Foreground(t.Muted),
 		Legend:    lipgloss.NewStyle().Foreground(fg),
 		Selection: selBg,
 	}

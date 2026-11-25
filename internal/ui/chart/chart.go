@@ -22,6 +22,7 @@ type Styles struct {
 	Axis      lipgloss.Style // tick labels
 	Grid      lipgloss.Style // grid lines
 	Marker    lipgloss.Style // the vertical marker line
+	Hover     lipgloss.Style // the vertical line under the pointer, and the tooltip border
 	Legend    lipgloss.Style // legend text
 	Selection color.Color    // background of the selected time span
 }
@@ -44,8 +45,14 @@ type Options struct {
 	// SelectFrom and SelectTo, when set, highlight a time span (e.g. while
 	// the user drags to zoom).
 	SelectFrom, SelectTo time.Time
-	Styles               Styles
+	// Hover, when set, is the pointer position over the plot (in plot cells):
+	// the bucket under it is outlined and its values shown in a tooltip.
+	Hover  *Cell
+	Styles Styles
 }
+
+// Cell is a position in the plot area.
+type Cell struct{ Col, Row int }
 
 // Layout tells where the parts of a rendered chart are, relative to its
 // top-left cell, so that mouse events can be mapped back to series and times.
@@ -173,8 +180,12 @@ func Render(o Options) (string, Layout) {
 	}
 	if !o.Marker.IsZero() {
 		if col := columnOf(o.Marker, o.From, o.To, plotW); col >= 0 {
-			c.marker(col)
+			c.marker(col, cellMarker)
 		}
+	}
+	hovering := o.Hover != nil && o.Hover.Col >= 0 && o.Hover.Col < plotW && o.Hover.Row >= 0 && o.Hover.Row < plotH
+	if hovering {
+		c.marker(o.Hover.Col, cellHover)
 	}
 
 	styles := make([]lipgloss.Style, len(o.Series))
@@ -193,6 +204,19 @@ func Render(o Options) (string, Layout) {
 	lines = append(lines, strings.Repeat(" ", gutter)+o.Styles.Axis.Render(xAxis(xticks, o.From, o.To, plotW)))
 	text, items := legend(o, step)
 	lines = append(lines, text)
+
+	if hovering {
+		col := o.Hover.Col
+		at := Layout{PlotW: plotW}.TimeAt(col, o.From, o.To).Add(span / time.Duration(2*plotW))
+		box := boxed(tooltip(o, visible, at, step, perUnit, unit), o.Styles.Hover)
+		boxW := ansi.StringWidth(box[0])
+		x := gutter + col + tooltipGap
+		if x+boxW > o.Width {
+			x = gutter + col - tooltipGap - boxW + 1 // flip to the left of the pointer
+		}
+		y := min(max(o.Hover.Row-len(box)/2, 0), max(plotH-len(box), 0))
+		overlay(lines, box, max(x, 0), y)
+	}
 	layout := Layout{Legend: Legend{Row: len(lines) - 1, Items: items}, PlotX: gutter, PlotW: plotW, PlotH: plotH}
 	return pad(strings.Join(lines, "\n"), o.Width, o.Height), layout
 }

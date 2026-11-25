@@ -75,6 +75,7 @@ func (m *Model) renderTimeline(width, height, originX, originY int) string {
 		LegendHint: legendHint,
 		SelectFrom: selFrom,
 		SelectTo:   selTo,
+		Hover:      m.hover,
 		Styles:     m.th.Chart,
 	})
 	if layout.Legend.Row >= 0 {

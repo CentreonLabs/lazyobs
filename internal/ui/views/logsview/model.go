@@ -16,6 +16,7 @@ import (
 	"github.com/CentreonLabs/lazyobs/internal/engine"
 	"github.com/CentreonLabs/lazyobs/internal/obs"
 	"github.com/CentreonLabs/lazyobs/internal/obs/logs"
+	"github.com/CentreonLabs/lazyobs/internal/ui/chart"
 	"github.com/CentreonLabs/lazyobs/internal/ui/theme"
 )
 
@@ -117,6 +118,7 @@ type Model struct {
 	// back to when zooming out.
 	drag      *dragSpan
 	zoomStack []obs.TimeRange
+	hover     *chart.Cell // pointer over the timeline plot, nil otherwise
 
 	// Natural-language queries.
 	lastPrompt  string
@@ -280,7 +282,7 @@ func (m *Model) Update(msg tea.Msg) (app.SignalView, tea.Cmd) {
 	case translateMsg:
 		return m, m.onTranslate(msg)
 	case tea.MouseMotionMsg:
-		m.onDragMove(msg.Mouse())
+		m.onMouseMove(msg.Mouse())
 		return m, nil
 	case tea.MouseReleaseMsg:
 		return m, m.onDragEnd(msg.Mouse())

@@ -7,6 +7,7 @@ import (
 
 	"github.com/CentreonLabs/lazyobs/internal/app"
 	"github.com/CentreonLabs/lazyobs/internal/obs"
+	"github.com/CentreonLabs/lazyobs/internal/ui/chart"
 )
 
 const (
@@ -32,11 +33,17 @@ func (m *Model) startDrag(col int) {
 	m.updateDrag(col)
 }
 
-func (m *Model) onDragMove(mouse tea.Mouse) {
-	if m.drag == nil {
+// onMouseMove extends a drag in progress, or follows the pointer over the
+// timeline for the tooltip.
+func (m *Model) onMouseMove(mouse tea.Mouse) {
+	m.hover = nil
+	if m.drag != nil {
+		m.updateDrag(mouse.X - m.hits.plotX)
 		return
 	}
-	m.updateDrag(mouse.X - m.hits.plotX)
+	if m.hits.inPlot(mouse.X, mouse.Y) && len(m.hist) > 0 {
+		m.hover = &chart.Cell{Col: mouse.X - m.hits.plotX, Row: mouse.Y - m.hits.plotY}
+	}
 }
 
 func (m *Model) updateDrag(col int) {
@@ -51,7 +58,7 @@ func (m *Model) onDragEnd(mouse tea.Mouse) tea.Cmd {
 	if m.drag == nil {
 		return nil
 	}
-	m.onDragMove(mouse)
+	m.onMouseMove(mouse)
 	d := m.drag
 	m.drag = nil
 	if d.to-d.from+1 < minZoomColumns {

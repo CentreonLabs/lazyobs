@@ -39,7 +39,7 @@ type SignalView interface {
 }
 
 // Views also receive tea.MouseClickMsg, tea.MouseWheelMsg, tea.MouseMotionMsg
-// (while a button is held) and tea.MouseReleaseMsg, with coordinates relative
+// (pointer moves, with or without a button held) and tea.MouseReleaseMsg, with coordinates relative
 // to their body (0,0 is the top-left cell of the body).
 
 // Tab is an entry of the header. A nil View marks a signal not available yet.
@@ -264,9 +264,9 @@ func (m *Model) updateActive(msg tea.Msg) tea.Cmd {
 func (m *Model) View() tea.View {
 	v := tea.NewView(m.render())
 	v.AltScreen = true
-	// Clicks and wheel are reported to views; terminals keep shift+drag for
-	// native text selection.
-	v.MouseMode = tea.MouseModeCellMotion
+	// Clicks, wheel and pointer moves (for hover tooltips) are reported to
+	// views; terminals keep shift+drag for native text selection.
+	v.MouseMode = tea.MouseModeAllMotion
 	v.WindowTitle = "lazyobs"
 	return v
 }

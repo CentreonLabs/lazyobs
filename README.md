@@ -47,6 +47,7 @@ lazyobs --demo                                   # try it without an account
 | `/`                                  | Edit the query                                              |
 | `a`                                  | Ask in plain words (natural-language query)                 |
 | `t`                                  | Time range (`tab` cycles presets)                           |
+| hover the chart                      | Tooltip with the values of each level in that bucket        |
 | drag on the chart / `-`              | Zoom in on a time span / zoom out                           |
 | `shift+←` / `shift+→` (or `[` / `]`) | Move the time range back / forward by a quarter of its span |
 | `enter` / `esc`                      | Open / close the detail panel                               |

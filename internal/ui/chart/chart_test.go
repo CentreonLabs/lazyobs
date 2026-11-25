@@ -220,3 +220,68 @@ func TestLayoutAndSelection(t *testing.T) {
 		t.Error("a selection must only change the background")
 	}
 }
+
+func TestHoverTooltip(t *testing.T) {
+	to := from.Add(10 * time.Minute)
+	info := series("INFO", time.Minute, 600, 600, 600, 600, 600, 1200, 600, 600, 600, 600)
+	errs := series("ERROR", time.Minute, 60, 60, 60, 60, 60, 120, 60, 60, 60, 60)
+	opts := Options{
+		Width: 100, Height: 14, From: from, To: to, Location: time.UTC,
+		Series: []obs.Series{info, errs},
+		Color:  func(string) color.Color { return lipgloss.Color("#00ff00") },
+	}
+	_, layout := Render(opts)
+	col := layout.PlotW * 11 / 20 // in the 6th bucket (11:05-11:06)
+	opts.Hover = &Cell{Col: col, Row: 4}
+	out, _ := Render(opts)
+	screen := ansi.Strip(out)
+	for _, want := range []string{"11:05:00 → 11:06:00", "INFO", "20/s", "1.2k", "ERROR", "2/s", "120", "total", "22/s", "1.3k"} {
+		if !strings.Contains(screen, want) {
+			t.Errorf("tooltip misses %q:\n%s", want, screen)
+		}
+	}
+	lines := strings.Split(screen, "\n")
+	if strings.Index(lines[4], "INFO") > strings.Index(lines[5], "ERROR") && strings.Contains(lines[5], "ERROR") {
+		t.Error("most important series first")
+	}
+	for i, l := range lines {
+		if ansi.StringWidth(l) != 100 {
+			t.Fatalf("line %d is %d wide", i, ansi.StringWidth(l))
+		}
+	}
+
+	// Near the right edge the tooltip flips to the left of the pointer.
+	opts.Hover = &Cell{Col: layout.PlotW - 1, Row: 0}
+	out, _ = Render(opts)
+	for _, l := range strings.Split(ansi.Strip(out), "\n") {
+		if i := strings.Index(l, "╮"); i >= 0 {
+			if x := len([]rune(l[:i])); x >= layout.PlotX+layout.PlotW-1 {
+				t.Errorf("tooltip should be left of the pointer, ends at %d", x)
+			}
+			break
+		}
+	}
+
+	// Outside the plot: no tooltip.
+	opts.Hover = &Cell{Col: layout.PlotW + 5, Row: 0}
+	if out, _ = Render(opts); strings.Contains(ansi.Strip(out), "total") {
+		t.Error("no tooltip outside the plot")
+	}
+}
+
+func TestTooltipColumnsAreAligned(t *testing.T) {
+	o := Options{
+		Location: time.UTC,
+		Color:    func(string) color.Color { return lipgloss.Color("#00ff00") },
+		Styles:   Styles{Axis: lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))},
+	}
+	visible := []obs.Series{series("INFO", time.Minute, 6000), series("ERROR", time.Minute, 6)}
+	rows := tooltip(o, visible, from.Add(30*time.Second), time.Minute, 1.0/60, "/s")
+	ends := map[int]bool{}
+	for _, r := range rows[1:] {
+		ends[ansi.StringWidth(r)] = true
+	}
+	if len(ends) != 1 {
+		t.Errorf("rows have different widths %v:\n%s", ends, ansi.Strip(strings.Join(rows, "\n")))
+	}
+}

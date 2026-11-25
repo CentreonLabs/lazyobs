@@ -230,3 +230,25 @@ func TestMoveInTime(t *testing.T) {
 		t.Fatalf("moving forward up to now must restore the relative range, got %v", h.view.rng)
 	}
 }
+
+func TestHoverShowsTooltip(t *testing.T) {
+	h := newHarness(t, Options{})
+	hits := h.rendered()
+	x, y := hits.plotX+hits.plotW/3, screenY(hits.plotY+3)
+
+	h.d.Send(tea.MouseMotionMsg{X: x, Y: y})
+	if s := h.d.Screen(); !strings.Contains(s, "total") || !strings.Contains(s, "→") {
+		t.Fatalf("tooltip missing while hovering:\n%s", s)
+	}
+	h.d.Send(tea.MouseMotionMsg{X: x, Y: screenY(hits.plotY + hits.plotH + 6)}) // over the list
+	if h.view.hover != nil || strings.Contains(h.d.Screen(), "total") {
+		t.Fatal("tooltip must disappear when the pointer leaves the plot")
+	}
+
+	// No tooltip while dragging.
+	h.d.Click(x, y, tea.MouseLeft, 0)
+	h.d.Send(tea.MouseMotionMsg{X: x + 10, Y: y, Button: tea.MouseLeft})
+	if h.view.hover != nil {
+		t.Error("dragging must hide the tooltip")
+	}
+}
