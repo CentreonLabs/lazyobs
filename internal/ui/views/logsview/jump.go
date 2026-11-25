@@ -20,6 +20,7 @@ const maxJumpPages = 5
 // the pages that contain them are loaded.
 type jump struct {
 	before time.Time // select the newest log before this time
+	latest bool      // the last bucket of the timeline
 	label  string
 	pages  int
 }
@@ -38,9 +39,15 @@ func (m *Model) jumpToColumn(col int) tea.Cmd {
 	loc := m.location()
 	j := &jump{
 		before: end,
+		// No room for another bucket after it: the latest one.
+		latest: end.Add(chart.BucketSize(m.hist, m.histFrom, m.histTo)).After(m.histTo),
 		label:  start.In(loc).Format("15:04:05") + " → " + end.In(loc).Format("15:04:05") + " · " + humanCount(int64(total)) + " logs",
 	}
-	// Far buckets: restart the list there rather than loading every page.
+	// Buckets newer than the top of a restarted list are not in it at all;
+	// far older ones would take too many pages: restart the list there.
+	if !m.listEnd.IsZero() && end.After(m.listEnd) {
+		return m.seek(j)
+	}
 	if !m.loaded(end) && m.newerThan(end)-int64(len(m.records)) > int64(maxJumpPages*m.opts.PageSize) {
 		return m.seek(j)
 	}
@@ -105,14 +112,18 @@ func (m *Model) seek(j *jump) tea.Cmd {
 		m.live = false
 	}
 	m.stopTail()
-	from, _ := m.rng.Resolve(m.opts.Now())
-	m.listEnd = j.before
+	from, to := m.rng.Resolve(m.opts.Now())
+	end := j.before
+	m.listEnd = end
+	if j.latest || !end.Before(to) { // back to the normal list
+		end, m.listEnd = to, time.Time{}
+	}
 	m.pager = engine.NewPager[logs.Record](m.opts.Source,
-		obs.Query{Text: m.query, Range: obs.Between(from, j.before), Limit: m.opts.PageSize},
+		obs.Query{Text: m.query, Range: obs.Between(from, end), Limit: m.opts.PageSize},
 		m.opts.Now(), logs.Record.Fingerprint)
 	m.records, m.err, m.cursor, m.top = nil, nil, 0, 0
 	m.loading = true
-	m.jump = &jump{before: j.before, label: j.label, pages: maxJumpPages} // select once the first page is in
+	m.jump = &jump{before: j.before, latest: j.latest, label: j.label, pages: maxJumpPages} // select once the first page is in
 	m.setDetail()
 	return m.fetchPage()
 }

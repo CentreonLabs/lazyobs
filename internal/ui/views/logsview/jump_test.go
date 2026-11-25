@@ -83,3 +83,25 @@ func TestClickFarDownTheListRestartsTheListThere(t *testing.T) {
 		t.Error("r must go back to the latest logs")
 	}
 }
+
+func TestClickForwardAfterARestartedList(t *testing.T) {
+	h := newHarness(t, Options{PageSize: 5})
+	h.clickChart(t, 2) // far back: the list restarts there
+	if h.view.listEnd.IsZero() {
+		t.Fatal("precondition: the list should have restarted")
+	}
+	hits := h.rendered()
+	start, end := h.clickChart(t, hits.plotW/2) // forward in time
+	sel := h.view.Selected()
+	if !sel.Timestamp.Before(end) || sel.Timestamp.Before(start.Add(-time.Minute)) {
+		t.Fatalf("clicking forward selected %v, bucket %v → %v", sel.Timestamp, start, end)
+	}
+
+	_, end = h.clickChart(t, hits.plotW-1) // the latest bucket
+	if !h.view.listEnd.IsZero() {
+		t.Errorf("the latest bucket must bring the normal list back, list end %v", h.view.listEnd)
+	}
+	if !h.view.Selected().Timestamp.Before(end) {
+		t.Errorf("selected %v after the bucket end %v", h.view.Selected().Timestamp, end)
+	}
+}
