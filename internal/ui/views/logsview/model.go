@@ -160,6 +160,31 @@ func (m *Model) Name() string { return "Logs" }
 // Help implements app.SignalView.
 func (m *Model) Help() [][]key.Binding { return m.keys.help() }
 
+// ShortHelp implements app.SignalView: the main actions, plus those that
+// make sense in the current state.
+func (m *Model) ShortHelp() []key.Binding {
+	k := m.keys
+	b := []key.Binding{k.Query}
+	if m.opts.Translator != nil {
+		b = append(b, short(k.Ask, "ask"))
+	}
+	b = append(b, short(k.Range, "range"), k.Detail, short(k.Live, "live"))
+	if m.tail != nil {
+		b = append(b, short(k.Pause, "pause"))
+	}
+	if len(m.zoomStack) > 0 {
+		b = append(b, k.ZoomOut)
+	}
+	return b
+}
+
+// short relabels a binding for the status bar; the help screen keeps the
+// full description.
+func short(b key.Binding, desc string) key.Binding {
+	b.SetHelp(b.Help().Key, desc)
+	return b
+}
+
 // Capturing implements app.SignalView.
 func (m *Model) Capturing() bool { return m.mode != modeNormal }
 

@@ -123,3 +123,31 @@ func TestAskWithoutTranslator(t *testing.T) {
 		t.Fatalf("missing translator must be reported:\n%s", h.d.Screen())
 	}
 }
+
+func TestStatusBarShortcutsFollowState(t *testing.T) {
+	h := newHarness(t, Options{Translator: fake.Translator{}})
+	s := h.d.Screen()
+	last := s[strings.LastIndex(s, "\n")+1:]
+	for _, want := range []string{"/ query", "a ask", "t range", "L live", "? toggle help"} {
+		if !strings.Contains(last, want) {
+			t.Errorf("status bar misses %q: %q", want, last)
+		}
+	}
+	if strings.Contains(last, "pause") || strings.Contains(last, "zoom out") {
+		t.Errorf("pause and zoom out only apply in live mode / after a zoom: %q", last)
+	}
+	h.d.Keys("?")
+	if !strings.Contains(h.d.Screen(), "ask in plain words") {
+		t.Error("the help screen must keep the full description")
+	}
+	h.d.Keys("?")
+	h.d.Keys("L")
+	if s := h.d.Screen(); !strings.Contains(s[strings.LastIndex(s, "\n")+1:], "space pause") {
+		t.Error("pause must be listed while live")
+	}
+
+	plain := newHarness(t, Options{})
+	if strings.Contains(plain.d.Screen(), "a ask") {
+		t.Error("ask must not be listed without a translator")
+	}
+}

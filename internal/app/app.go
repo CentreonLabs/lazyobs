@@ -28,6 +28,9 @@ type SignalView interface {
 	View(width, height int) string
 	// Help lists the view's key bindings, grouped in columns.
 	Help() [][]key.Binding
+	// ShortHelp lists the few bindings shown in the status bar, which may
+	// depend on the view's state.
+	ShortHelp() []key.Binding
 	// Capturing reports whether a text input has focus: global keys are then
 	// passed to the view instead of being interpreted.
 	Capturing() bool
@@ -339,12 +342,7 @@ func (m *Model) renderStatus() string {
 func (m *Model) shortHelp() []key.Binding {
 	var b []key.Binding
 	if v := m.activeView(); v != nil {
-		if groups := v.Help(); len(groups) > 0 {
-			b = append(b, groups[0]...)
-		}
-	}
-	if len(b) > 5 {
-		b = b[:5]
+		b = append(b, v.ShortHelp()...)
 	}
 	return append(b, m.keys.ShortHelp()...)
 }

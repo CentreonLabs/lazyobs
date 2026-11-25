@@ -66,9 +66,9 @@ func defaultKeys() keyMap {
 
 func (k keyMap) help() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Query, k.Range, k.Detail, k.Live, k.Pause},
+		{k.Query, k.Ask, k.Range, k.Detail, k.Live, k.Pause},
 		k.Bindings(),
-		{k.Ask, k.ZoomOut, k.Refresh, k.Focus, k.Close, k.Copy, k.UTC, k.Layout},
+		{k.ZoomOut, k.Refresh, k.Focus, k.Close, k.Copy, k.UTC, k.Layout},
 		{k.MouseZoom, k.MouseToggle, k.MouseSolo, k.MouseSelect, k.MouseWheel},
 	}
 }
