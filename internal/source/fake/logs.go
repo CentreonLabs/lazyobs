@@ -11,6 +11,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"slices"
 	"strings"
@@ -21,7 +22,27 @@ import (
 )
 
 // MaxPerSecond is the maximum number of records generated per second.
-const MaxPerSecond = 4
+const MaxPerSecond = 8
+
+// Traffic shape: the rate follows a 30-minute wave, and every 20 minutes an
+// incident lasting 2 minutes raises the volume and the share of errors.
+const (
+	wavePeriod     = 30 * 60
+	incidentEvery  = 20 * 60
+	incidentLength = 2 * 60
+)
+
+func inIncident(sec int64) bool { return sec%incidentEvery < incidentLength }
+
+// maxAt is the maximum number of records generated during sec.
+func maxAt(sec int64) int {
+	wave := 1 + 0.6*math.Sin(2*math.Pi*float64(sec%wavePeriod)/wavePeriod)
+	n := int(2.5*wave + 0.5) // 1 to 4
+	if inIncident(sec) {
+		n *= 2
+	}
+	return min(n, MaxPerSecond)
+}
 
 // Logs is a synthetic log source.
 type Logs struct {
@@ -92,7 +113,12 @@ func (l *Logs) Search(ctx context.Context, q obs.Query) (obs.Page[logs.Record], 
 	return page, nil
 }
 
-// Histogram counts matching logs per bucket over the query range.
+// maxSampledSeconds bounds the seconds generated per histogram bucket; larger
+// buckets are estimated from evenly spread samples to stay fast on long ranges.
+const maxSampledSeconds = 120
+
+// Histogram counts matching logs per bucket over the query range, one series
+// per severity (named after it), like the platform's severity aggregation.
 func (l *Logs) Histogram(ctx context.Context, q obs.Query, buckets int) ([]obs.Series, error) {
 	if err := l.wait(ctx); err != nil {
 		return nil, err
@@ -104,23 +130,48 @@ func (l *Logs) Histogram(ctx context.Context, q obs.Query, buckets int) ([]obs.S
 	}
 	buckets = max(buckets, 1)
 	step := max(to.Sub(from)/time.Duration(buckets), time.Second).Truncate(time.Second)
-	s := obs.Series{Name: "log count"}
+
+	counts := map[logs.Severity][]float64{}
+	var times []time.Time
 	for t := from.Truncate(time.Second); t.Before(to); t = t.Add(step) {
-		var n float64
-		for sec := t.Unix(); sec < t.Add(step).Unix() && sec < ceilSecond(to); sec++ {
-			if f.isEmpty() {
-				n += float64(l.count(sec))
-				continue
-			}
+		i := len(times)
+		times = append(times, t)
+		first, last := t.Unix(), min(t.Add(step).Unix(), ceilSecond(to))
+		n := last - first
+		stride := max(n/maxSampledSeconds, 1)
+		for sec := first; sec < last; sec += stride {
 			for _, r := range l.recordsAt(sec) {
-				if f.match(r) {
-					n++
+				if !f.match(r) {
+					continue
 				}
+				if counts[r.Severity] == nil {
+					counts[r.Severity] = make([]float64, 0, buckets+1)
+				}
+				for len(counts[r.Severity]) <= i {
+					counts[r.Severity] = append(counts[r.Severity], 0)
+				}
+				counts[r.Severity][i] += float64(stride)
 			}
 		}
-		s.Points = append(s.Points, obs.Point{Time: t, Value: n})
 	}
-	return []obs.Series{s}, nil
+
+	var series []obs.Series
+	for sev := logs.SeverityTrace; sev <= logs.SeverityFatal; sev++ {
+		values, ok := counts[sev]
+		if !ok {
+			continue
+		}
+		s := obs.Series{Name: sev.String(), Labels: map[string]string{"severity": sev.String()}}
+		for i, t := range times {
+			var v float64
+			if i < len(values) {
+				v = values[i]
+			}
+			s.Points = append(s.Points, obs.Point{Time: t, Value: v})
+		}
+		series = append(series, s)
+	}
+	return series, nil
 }
 
 func (l *Logs) wait(ctx context.Context) error {
@@ -153,16 +204,16 @@ func (l *Logs) rng(sec int64) *rand.Rand {
 }
 
 // count returns the number of records generated for sec without building them.
-func (l *Logs) count(sec int64) int { return l.rng(sec).IntN(MaxPerSecond + 1) }
+func (l *Logs) count(sec int64) int { return l.rng(sec).IntN(maxAt(sec) + 1) }
 
 // recordsAt generates the records of one second, newest first.
 func (l *Logs) recordsAt(sec int64) []logs.Record {
 	r := l.rng(sec)
-	n := r.IntN(MaxPerSecond + 1) // must stay the first draw, see count
+	n := r.IntN(maxAt(sec) + 1) // must stay the first draw, see count
 	out := make([]logs.Record, n)
 	for i := range out {
 		svc := services[r.IntN(len(services))]
-		sev := pickSeverity(r)
+		sev := pickSeverity(r, inIncident(sec))
 		tmpl := messages[sev][r.IntN(len(messages[sev]))]
 		rec := logs.Record{
 			Timestamp:      time.Unix(sec, r.Int64N(int64(time.Second))),

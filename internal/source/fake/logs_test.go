@@ -117,15 +117,29 @@ func TestHistogramMatchesTotal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(series) != 1 || len(series[0].Points) != 60 {
-		t.Fatalf("series = %d, points = %d", len(series), len(series[0].Points))
+	if len(series) < 4 {
+		t.Fatalf("expected one series per severity, got %d", len(series))
 	}
 	var sum float64
-	for _, p := range series[0].Points {
-		sum += p.Value
+	for _, s := range series {
+		if len(s.Points) != 60 || logs.ParseSeverity(s.Name) == logs.SeverityUnknown {
+			t.Fatalf("series %q has %d points", s.Name, len(s.Points))
+		}
+		for _, p := range s.Points {
+			sum += p.Value
+		}
 	}
 	if total := search(t, src, obs.Query{Range: q.Range, Limit: 1}).Total; int64(sum) != total {
 		t.Fatalf("histogram sum %v != total %d", sum, total)
+	}
+
+	// Long ranges are sampled but stay fast.
+	began := time.Now()
+	if _, err := src.Histogram(context.Background(), obs.Query{Range: obs.Last(30 * 24 * time.Hour)}, 200); err != nil {
+		t.Fatal(err)
+	}
+	if d := time.Since(began); d > 3*time.Second {
+		t.Errorf("30-day histogram took %v", d)
 	}
 }
 

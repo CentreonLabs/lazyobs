@@ -37,7 +37,11 @@ var severityWeights = []struct {
 	{logs.SeverityFatal, 1},
 }
 
-func pickSeverity(r *rand.Rand) logs.Severity {
+// pickSeverity draws a level; during an incident a third of the logs are errors.
+func pickSeverity(r *rand.Rand, incident bool) logs.Severity {
+	if incident && r.IntN(3) == 0 {
+		return logs.SeverityError
+	}
 	n := r.IntN(100)
 	for _, w := range severityWeights {
 		if n < w.weight {

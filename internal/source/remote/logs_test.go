@@ -190,7 +190,7 @@ func TestHistogram(t *testing.T) {
 		t.Fatal(err)
 	}
 	req := stub.requests[0]
-	if req.MaxHits != 0 || req.Aggregation == nil || req.Aggregation.Type != api.AggregateCount ||
+	if req.MaxHits != 0 || req.Aggregation == nil || req.Aggregation.Type != api.AggregateSeverity ||
 		req.Aggregation.TargetResolution != 10 || req.Query != "service_name:api" {
 		t.Errorf("unexpected request %+v (aggregation %+v)", req, req.Aggregation)
 	}
@@ -198,7 +198,8 @@ func TestHistogram(t *testing.T) {
 		t.Fatalf("series = %+v", series)
 	}
 	p := series[0].Points[2]
-	if !p.Time.Equal(time.UnixMilli(1793023200000)) || p.Value != 25.5 || series[0].Labels["severity_number"] != "13-17" {
+	if !p.Time.Equal(time.UnixMilli(1793023200000)) || p.Value != 25.5 || series[0].Labels["severity_number"] != "13-17" ||
+		series[0].Name != "WARN" || series[1].Name != "ERROR" {
 		t.Errorf("unexpected point %+v labels %v", p, series[0].Labels)
 	}
 }

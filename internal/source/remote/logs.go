@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"strconv"
 	"strings"
 	"time"
 
@@ -80,7 +81,9 @@ func (l *Logs) Search(ctx context.Context, q obs.Query) (obs.Page[logs.Record], 
 	return page, nil
 }
 
-// Histogram returns the number of logs matching q over time.
+// Histogram returns the number of logs matching q over time, one series per
+// severity level. Series are named after the level ("ERROR", "WARN"...);
+// levels without any log are omitted.
 func (l *Logs) Histogram(ctx context.Context, q obs.Query, buckets int) ([]obs.Series, error) {
 	start, end := l.bounds(q)
 	resp, err := l.api.SearchLogs(ctx, api.LogSearchRequest{
@@ -89,7 +92,7 @@ func (l *Logs) Histogram(ctx context.Context, q obs.Query, buckets int) ([]obs.S
 		End:     &end,
 		MaxHits: 0,
 		Aggregation: &api.Aggregation{
-			Type:             api.AggregateCount,
+			Type:             api.AggregateSeverity,
 			TargetResolution: min(max(buckets, 10), 50_000),
 		},
 	})
@@ -98,7 +101,10 @@ func (l *Logs) Histogram(ctx context.Context, q obs.Query, buckets int) ([]obs.S
 	}
 	series := make([]obs.Series, 0, len(resp.Curves))
 	for _, c := range resp.Curves {
-		s := obs.Series{Name: c.Metric, Points: make([]obs.Point, 0, len(c.Times))}
+		if allZero(c.Data) {
+			continue
+		}
+		s := obs.Series{Name: severityOfCurve(c).String(), Points: make([]obs.Point, 0, len(c.Times))}
 		if c.Unit != nil {
 			s.Unit = *c.Unit
 		}
@@ -116,6 +122,30 @@ func (l *Logs) Histogram(ctx context.Context, q obs.Query, buckets int) ([]obs.S
 		series = append(series, s)
 	}
 	return series, nil
+}
+
+// severityOfCurve reads the level of a severity aggregation curve from its
+// severity_number range attribute ("13-17" is WARN, "*-1" is unknown).
+func severityOfCurve(c api.Curve) logs.Severity {
+	for _, kv := range c.Attributes {
+		if kv[0] != "severity_number" {
+			continue
+		}
+		lo, _, _ := strings.Cut(kv[1], "-")
+		if n, err := strconv.Atoi(lo); err == nil {
+			return logs.SeverityFromNumber(n)
+		}
+	}
+	return logs.SeverityUnknown
+}
+
+func allZero(values []float64) bool {
+	for _, v := range values {
+		if v != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // bounds converts the query range to API seconds: start inclusive, end exclusive.
