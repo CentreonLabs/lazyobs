@@ -124,8 +124,8 @@ func TestStaleResultsAreDropped(t *testing.T) {
 	stale := h.view.searchID
 	h.d.Keys("r")
 	count := len(h.view.records)
-	h.d.Send(pageMsg{id: stale, items: h.view.records[:3]})
-	h.d.Send(tailMsg{gen: h.view.liveGen - 1})
+	h.d.Send(pageMsg{owner: owner{h.view.id}, id: stale, items: h.view.records[:3]})
+	h.d.Send(tailMsg{owner: owner{h.view.id}, gen: h.view.liveGen - 1})
 	if len(h.view.records) != count {
 		t.Fatal("results of a previous search must be ignored")
 	}
@@ -149,7 +149,7 @@ func TestOutdatedHistogramIsIgnored(t *testing.T) {
 		t.Fatal("histogram not loaded")
 	}
 	current := h.view.hist
-	h.d.Send(histMsg{id: h.view.searchID, cols: h.view.histCols + 7, from: h.view.histFrom, to: h.view.histTo, series: nil})
+	h.d.Send(histMsg{owner: owner{h.view.id}, id: h.view.searchID, cols: h.view.histCols + 7, from: h.view.histFrom, to: h.view.histTo, series: nil})
 	if len(h.view.hist) != len(current) {
 		t.Fatal("a response to an outdated request replaced the timeline")
 	}

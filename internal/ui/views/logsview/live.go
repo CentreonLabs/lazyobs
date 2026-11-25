@@ -59,12 +59,12 @@ func (m *Model) stopTail() {
 }
 
 func (m *Model) poll() tea.Cmd {
-	gen, tail := m.liveGen, m.tail
+	gen, tail, viewID := m.liveGen, m.tail, m.id
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
 		u, err := tail.Poll(ctx)
-		return tailMsg{gen: gen, update: u, err: err, delay: tail.NextDelay()}
+		return tailMsg{owner: owner{viewID}, gen: gen, update: u, err: err, delay: tail.NextDelay()}
 	}
 }
 
@@ -72,7 +72,7 @@ func (m *Model) onTail(msg tailMsg) tea.Cmd {
 	if msg.gen != m.liveGen || m.tail == nil {
 		return nil
 	}
-	next := m.opts.After(msg.delay, tailTickMsg{gen: m.liveGen})
+	next := m.opts.After(msg.delay, tailTickMsg{owner: owner{m.id}, gen: m.liveGen})
 	if msg.err != nil {
 		m.liveErrs++
 		return tea.Batch(next, app.Notify(app.LevelWarn, "live: %v (retrying in %s)", msg.err, msg.delay.Round(time.Second)))

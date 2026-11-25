@@ -4,6 +4,7 @@ package logsview
 
 import (
 	"context"
+	"sync/atomic"
 	"time"
 
 	"charm.land/bubbles/v2/key"
@@ -66,6 +67,7 @@ const (
 
 // Model is the logs view.
 type Model struct {
+	id   uint64
 	opts Options
 	th   *theme.Theme
 	keys keyMap
@@ -143,6 +145,7 @@ func New(opts Options) *Model {
 	in := textinput.New()
 	in.Prompt = ""
 	return &Model{
+		id:     nextViewID.Add(1),
 		opts:   opts,
 		th:     opts.Theme,
 		keys:   defaultKeys(),
@@ -194,10 +197,22 @@ func (m *Model) Capturing() bool { return m.mode != modeNormal }
 // Init implements app.SignalView.
 func (m *Model) Init() tea.Cmd { return m.search() }
 
-// Messages of asynchronous work, tagged with the search or live generation
-// they belong to so stale results are dropped.
+// nextViewID numbers view instances: several logs views (tabs) receive the
+// same broadcast messages and must only handle their own.
+var nextViewID atomic.Uint64
+
+// owner tags asynchronous messages with the view that issued them.
+type owner struct{ view uint64 }
+
+func (o owner) ownerID() uint64 { return o.view }
+
+type ownedMsg interface{ ownerID() uint64 }
+
+// Messages of asynchronous work, tagged with their view and with the search
+// or live generation they belong to so stale results are dropped.
 type (
 	pageMsg struct {
+		owner
 		id       int
 		items    []logs.Record
 		warnings []string
@@ -205,20 +220,26 @@ type (
 		elapsed  time.Duration
 	}
 	histMsg struct {
+		owner
 		id       int
 		cols     int // number of buckets requested
 		from, to time.Time
 		series   []obs.Series
 		err      error
 	}
-	tailTickMsg  struct{ gen int }
+	tailTickMsg struct {
+		owner
+		gen int
+	}
 	translateMsg struct {
+		owner
 		id     int
 		prompt string
 		result obs.Translation
 		err    error
 	}
 	tailMsg struct {
+		owner
 		gen    int
 		update engine.TailUpdate[logs.Record]
 		err    error
@@ -228,6 +249,9 @@ type (
 
 // Update implements app.SignalView.
 func (m *Model) Update(msg tea.Msg) (app.SignalView, tea.Cmd) {
+	if o, ok := msg.(ownedMsg); ok && o.ownerID() != m.id {
+		return m, nil // another view's result
+	}
 	switch msg := msg.(type) {
 	case app.ResizeMsg:
 		m.width, m.height = msg.Width, msg.Height
@@ -288,13 +312,13 @@ func (m *Model) search() tea.Cmd {
 }
 
 func (m *Model) fetchPage() tea.Cmd {
-	id, p := m.searchID, m.pager
+	id, p, viewID := m.searchID, m.pager, m.id
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
 		began := time.Now()
 		items, warnings, err := p.Next(ctx)
-		return pageMsg{id: id, items: items, warnings: warnings, err: err, elapsed: time.Since(began)}
+		return pageMsg{owner: owner{viewID}, id: id, items: items, warnings: warnings, err: err, elapsed: time.Since(began)}
 	}
 }
 
@@ -302,7 +326,7 @@ func (m *Model) fetchHistogram() tea.Cmd {
 	if m.opts.Histogram == nil || m.width == 0 {
 		return nil // sized on the first ResizeMsg
 	}
-	id, h := m.searchID, m.opts.Histogram
+	id, h, viewID := m.searchID, m.opts.Histogram, m.id
 	q := m.pager.Query()
 	if m.tail != nil {
 		q.Range = m.rng.Pin(m.opts.Now()) // live: the timeline follows the clock
@@ -314,7 +338,7 @@ func (m *Model) fetchHistogram() tea.Cmd {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
 		series, err := h.Histogram(ctx, q, buckets)
-		return histMsg{id: id, cols: buckets, from: from, to: to, series: series, err: err}
+		return histMsg{owner: owner{viewID}, id: id, cols: buckets, from: from, to: to, series: series, err: err}
 	}
 }
 

@@ -23,12 +23,12 @@ func (m *Model) translate(prompt string) tea.Cmd {
 	m.askID++
 	m.translating = true
 	m.lastPrompt = prompt
-	id, tr := m.askID, m.opts.Translator
+	id, tr, viewID := m.askID, m.opts.Translator, m.id
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
 		res, err := tr.Translate(ctx, prompt)
-		return translateMsg{id: id, prompt: prompt, result: res, err: err}
+		return translateMsg{owner: owner{viewID}, id: id, prompt: prompt, result: res, err: err}
 	}
 }
 
