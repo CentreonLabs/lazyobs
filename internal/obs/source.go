@@ -68,3 +68,15 @@ type FieldSuggester interface {
 	// Values returns the most frequent values of field starting with prefix.
 	Values(ctx context.Context, field, prefix string, from, to time.Time, limit int) ([]FieldValue, error)
 }
+
+// Breakdown is the distribution of a field's values among the items
+// matching a query.
+type Breakdown struct {
+	Values []FieldValue // most frequent first
+	Total  int64        // all matching items, including those of values not listed
+}
+
+// Breakdowner counts the items matching a query per value of a field.
+type Breakdowner interface {
+	Breakdown(ctx context.Context, q Query, field string) (Breakdown, error)
+}
