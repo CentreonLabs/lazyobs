@@ -73,11 +73,21 @@ type Cursor struct {
 	End time.Time
 }
 
+// Order is how search results are sorted.
+type Order int
+
+// Orders. Sources that cannot sort by duration ignore OrderSlowest.
+const (
+	OrderNewest  Order = iota // most recent first (the default)
+	OrderSlowest              // longest duration first
+)
+
 // Query describes a search for any signal.
 type Query struct {
 	Text   string // backend query language (Quickwit syntax for the Centreon platform)
 	Range  TimeRange
 	Limit  int     // maximum number of items per page
+	Order  Order   // ignored by logs, which are always newest first
 	Cursor *Cursor // nil for the first page
 }
 

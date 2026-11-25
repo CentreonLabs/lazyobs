@@ -1,0 +1,82 @@
+{
+ "num_hits": 10,
+ "hits": [
+  {
+   "resource_attributes": {
+    "deployment.environment": "lazyobs-dev",
+    "service.version": "1.0.0"
+   },
+   "scope_name": "lazyobs-trace-generator",
+   "scope_version": "1",
+   "service_name": "lazyobs-demo-gateway",
+   "span_attributes": {
+    "http.method": "POST",
+    "http.route": "/v1/orders",
+    "http.status_code": 201
+   },
+   "span_duration_millis": 131,
+   "span_end_timestamp_nanos": 1795628695359043239,
+   "span_fingerprint": "lazyobs-demo-gateway\u00002\u0000POST /v1/orders",
+   "span_id": "e3c29b62179273c8",
+   "span_kind": 2,
+   "span_name": "POST /v1/orders",
+   "span_start_timestamp_nanos": 1795628695228043239,
+   "span_status": {
+    "code": "ok"
+   },
+   "trace_id": "30877432d1026706d7e805da846a32c3"
+  },
+  {
+   "resource_attributes": {
+    "deployment.environment": "lazyobs-dev",
+    "service.version": "1.0.0"
+   },
+   "scope_name": "lazyobs-trace-generator",
+   "scope_version": "1",
+   "service_name": "lazyobs-demo-gateway",
+   "span_attributes": {
+    "http.method": "POST",
+    "http.route": "/v1/orders",
+    "http.status_code": 201
+   },
+   "span_duration_millis": 206,
+   "span_end_timestamp_nanos": 1795628730945959657,
+   "span_fingerprint": "lazyobs-demo-gateway\u00002\u0000POST /v1/orders",
+   "span_id": "3766e4d58e72e310",
+   "span_kind": 2,
+   "span_name": "POST /v1/orders",
+   "span_start_timestamp_nanos": 1795628730739959657,
+   "span_status": {
+    "code": "ok"
+   },
+   "trace_id": "2a077021721a278f64f7fd633dbdde13"
+  },
+  {
+   "resource_attributes": {
+    "deployment.environment": "lazyobs-dev",
+    "service.version": "1.0.0"
+   },
+   "scope_name": "lazyobs-trace-generator",
+   "scope_version": "1",
+   "service_name": "lazyobs-demo-gateway",
+   "span_attributes": {
+    "http.method": "POST",
+    "http.route": "/v1/orders",
+    "http.status_code": 201
+   },
+   "span_duration_millis": 198,
+   "span_end_timestamp_nanos": 1795628757253568230,
+   "span_fingerprint": "lazyobs-demo-gateway\u00002\u0000POST /v1/orders",
+   "span_id": "7706ca828bca0385",
+   "span_kind": 2,
+   "span_name": "POST /v1/orders",
+   "span_start_timestamp_nanos": 1795628757055568230,
+   "span_status": {
+    "code": "ok"
+   },
+   "trace_id": "1b4d419b1b673bd4755d05ad7853c1f7"
+  }
+ ],
+ "elapsed_time_micros": 85821,
+ "errors": []
+}

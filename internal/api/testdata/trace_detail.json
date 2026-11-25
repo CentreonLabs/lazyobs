@@ -1,0 +1,190 @@
+{
+ "traceId": "30877432d1026706d7e805da846a32c3",
+ "rootSpanId": "e3c29b62179273c8",
+ "rootSpanStatus": "ok",
+ "services": [
+  "lazyobs-demo-gateway",
+  "lazyobs-demo-inventory",
+  "lazyobs-demo-notifier",
+  "lazyobs-demo-orders",
+  "lazyobs-demo-payments"
+ ],
+ "traceName": "POST /v1/orders",
+ "totalDuration": 131,
+ "spans": [
+  {
+   "parent_span_id": "eb5bb682575ec87a",
+   "resource_attributes": {
+    "deployment.environment": "lazyobs-dev",
+    "service.version": "1.0.0"
+   },
+   "scope_name": "lazyobs-trace-generator",
+   "scope_version": "1",
+   "service_name": "lazyobs-demo-notifier",
+   "span_attributes": {
+    "messaging.destination": "order-events",
+    "messaging.system": "kafka"
+   },
+   "span_duration_millis": 13,
+   "span_end_timestamp_nanos": 1795628695422043239,
+   "span_fingerprint": "lazyobs-demo-notifier\u00004\u0000SendConfirmation",
+   "span_id": "44f58d669cbee377",
+   "span_kind": 4,
+   "span_name": "SendConfirmation",
+   "span_start_timestamp_nanos": 1795628695409043239,
+   "span_status": {
+    "code": "ok"
+   },
+   "trace_id": "30877432d1026706d7e805da846a32c3"
+  },
+  {
+   "parent_span_id": "eb5bb682575ec87a",
+   "resource_attributes": {
+    "deployment.environment": "lazyobs-dev",
+    "service.version": "1.0.0"
+   },
+   "scope_name": "lazyobs-trace-generator",
+   "scope_version": "1",
+   "service_name": "lazyobs-demo-payments",
+   "span_attributes": {
+    "payment.provider": "acme",
+    "rpc.method": "Charge"
+   },
+   "span_duration_millis": 49,
+   "span_end_timestamp_nanos": 1795628695363043239,
+   "span_fingerprint": "lazyobs-demo-payments\u00002\u0000Charge",
+   "span_id": "b50af03b971722f2",
+   "span_kind": 2,
+   "span_name": "Charge",
+   "span_start_timestamp_nanos": 1795628695314043239,
+   "span_status": {
+    "code": "ok"
+   },
+   "trace_id": "30877432d1026706d7e805da846a32c3"
+  },
+  {
+   "parent_span_id": "8dcb74f21345d2cc",
+   "resource_attributes": {
+    "deployment.environment": "lazyobs-dev",
+    "service.version": "1.0.0"
+   },
+   "scope_name": "lazyobs-trace-generator",
+   "scope_version": "1",
+   "service_name": "lazyobs-demo-inventory",
+   "span_attributes": {
+    "db.system": "redis"
+   },
+   "span_duration_millis": 4,
+   "span_end_timestamp_nanos": 1795628695250043239,
+   "span_fingerprint": "lazyobs-demo-inventory\u00003\u0000redis GET stock",
+   "span_id": "8038a39d5e085396",
+   "span_kind": 3,
+   "span_name": "redis GET stock",
+   "span_start_timestamp_nanos": 1795628695246043239,
+   "span_status": {
+    "code": "ok"
+   },
+   "trace_id": "30877432d1026706d7e805da846a32c3"
+  },
+  {
+   "parent_span_id": "eb5bb682575ec87a",
+   "resource_attributes": {
+    "deployment.environment": "lazyobs-dev",
+    "service.version": "1.0.0"
+   },
+   "scope_name": "lazyobs-trace-generator",
+   "scope_version": "1",
+   "service_name": "lazyobs-demo-inventory",
+   "span_attributes": {
+    "items.count": 5,
+    "rpc.method": "ReserveItems"
+   },
+   "span_duration_millis": 55,
+   "span_end_timestamp_nanos": 1795628695299043239,
+   "span_fingerprint": "lazyobs-demo-inventory\u00002\u0000ReserveItems",
+   "span_id": "8dcb74f21345d2cc",
+   "span_kind": 2,
+   "span_name": "ReserveItems",
+   "span_start_timestamp_nanos": 1795628695244043239,
+   "span_status": {
+    "code": "ok"
+   },
+   "trace_id": "30877432d1026706d7e805da846a32c3"
+  },
+  {
+   "parent_span_id": "eb5bb682575ec87a",
+   "resource_attributes": {
+    "deployment.environment": "lazyobs-dev",
+    "service.version": "1.0.0"
+   },
+   "scope_name": "lazyobs-trace-generator",
+   "scope_version": "1",
+   "service_name": "lazyobs-demo-orders",
+   "span_attributes": {
+    "db.statement": "INSERT INTO orders VALUES ($1, $2)",
+    "db.system": "postgresql"
+   },
+   "span_duration_millis": 6,
+   "span_end_timestamp_nanos": 1795628695242043239,
+   "span_fingerprint": "lazyobs-demo-orders\u00003\u0000INSERT orders",
+   "span_id": "71ac826a6fce4847",
+   "span_kind": 3,
+   "span_name": "INSERT orders",
+   "span_start_timestamp_nanos": 1795628695236043239,
+   "span_status": {
+    "code": "ok"
+   },
+   "trace_id": "30877432d1026706d7e805da846a32c3"
+  },
+  {
+   "parent_span_id": "e3c29b62179273c8",
+   "resource_attributes": {
+    "deployment.environment": "lazyobs-dev",
+    "service.version": "1.0.0"
+   },
+   "scope_name": "lazyobs-trace-generator",
+   "scope_version": "1",
+   "service_name": "lazyobs-demo-orders",
+   "span_attributes": {
+    "order.id": "277370",
+    "rpc.method": "CreateOrder"
+   },
+   "span_duration_millis": 111,
+   "span_end_timestamp_nanos": 1795628695344043239,
+   "span_fingerprint": "lazyobs-demo-orders\u00002\u0000CreateOrder",
+   "span_id": "eb5bb682575ec87a",
+   "span_kind": 2,
+   "span_name": "CreateOrder",
+   "span_start_timestamp_nanos": 1795628695233043239,
+   "span_status": {
+    "code": "ok"
+   },
+   "trace_id": "30877432d1026706d7e805da846a32c3"
+  },
+  {
+   "resource_attributes": {
+    "deployment.environment": "lazyobs-dev",
+    "service.version": "1.0.0"
+   },
+   "scope_name": "lazyobs-trace-generator",
+   "scope_version": "1",
+   "service_name": "lazyobs-demo-gateway",
+   "span_attributes": {
+    "http.method": "POST",
+    "http.route": "/v1/orders",
+    "http.status_code": 201
+   },
+   "span_duration_millis": 131,
+   "span_end_timestamp_nanos": 1795628695359043239,
+   "span_fingerprint": "lazyobs-demo-gateway\u00002\u0000POST /v1/orders",
+   "span_id": "e3c29b62179273c8",
+   "span_kind": 2,
+   "span_name": "POST /v1/orders",
+   "span_start_timestamp_nanos": 1795628695228043239,
+   "span_status": {
+    "code": "ok"
+   },
+   "trace_id": "30877432d1026706d7e805da846a32c3"
+  }
+ ]
+}

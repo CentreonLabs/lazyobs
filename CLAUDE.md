@@ -63,7 +63,7 @@ UI conventions:
 - Errors: `{"message": "..."}` with 400/401/402/403/413/422. No rate-limit headers observed.
 - No streaming endpoint: live mode polls every **10 s** with an overlap window and dedups on a fingerprint.
 - `POST /log-analysis/nlquery/translate` (**Editor** role) takes `{prompt, available_services?}` and returns `{query, time_range, warning}`; `time_range` is a look-back in **milliseconds**, `{start, end}` in epoch ms, or null. We ground it with the top `service_name` terms of the last 7 days.
-- Traces (`/traces/search`, `/traces/{id}`) are beta, enabled per org (404 otherwise).
+- Traces (beta, enabled per org, 404 otherwise). `POST /traces/search` matches **root spans only** (one hit per trace; inner services are not searchable), hits are spans: `trace_id`, `span_id`, `parent_span_id`, `service_name`, `span_name`, `span_kind` (OTel int), `span_start/end_timestamp_nanos`, `span_duration_millis`, `span_status {code: ok|error|unset, message}`, `span_attributes`, `resource_attributes`. **`sort_direction` is reversed** (desc returns ascending, the default is oldest first): `remote.Traces` detects it from the results and flips. Aggregation needs `interval` and only counts traces (curve `attributes` is an array, not the documented object). `GET /traces/{id}` returns `{traceId, rootSpanId, rootSpanStatus, services, traceName, totalDuration (ms, root only), spans}` with spans unordered; async children may end after the root. `/traces/topology` gives per-service p50/p95/p99, errors and call edges. Synthetic traces (`lazyobs-demo-*`) were ingested once into mbe-org on 2026-11-25 through `https://otlp.euwest1.obs.mycentreon.com/v1/ingress/otlp/v1/traces` (OTLP JSON, org from the token).
 
 ## Conventions
 
