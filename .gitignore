@@ -1,0 +1,23 @@
+# Build output
+/bin/
+/dist/
+/lazyobs
+*.exe
+
+# Test and coverage
+coverage.out
+*.test
+
+# Debug logs written with --debug
+*.log
+
+# Local secrets and configs — never commit tokens
+.env
+*.token
+config.local.yaml
+
+# Editors and OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
