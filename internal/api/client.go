@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -90,15 +91,44 @@ func (c *Client) orgURL(segments ...string) string {
 	return c.baseURL.JoinPath(escaped...).String()
 }
 
+// Rate limiting: the platform answers 429 with a delay to wait.
+const (
+	maxAttempts    = 3
+	defaultRetryIn = time.Second
+	maxRetryIn     = 10 * time.Second
+)
+
+var retryAfterMessage = regexp.MustCompile(`retry after (\d+(?:\.\d+)?)\s*(ms|s)\b`)
+
 // do sends a JSON request and decodes a JSON response into out (if non-nil).
+// Rate-limited requests are retried after the delay the platform asks for.
 func (c *Client) do(ctx context.Context, method, endpoint string, body, out any) error {
-	var reqBody io.Reader
+	var payload []byte
 	if body != nil {
 		b, err := json.Marshal(body)
 		if err != nil {
 			return fmt.Errorf("api: encode request: %w", err)
 		}
-		reqBody = bytes.NewReader(b)
+		payload = b
+	}
+	for attempt := 1; ; attempt++ {
+		err := c.send(ctx, method, endpoint, payload, out)
+		var apiErr *Error
+		if !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusTooManyRequests || attempt == maxAttempts {
+			return err
+		}
+		select {
+		case <-time.After(apiErr.retryIn):
+		case <-ctx.Done():
+			return err
+		}
+	}
+}
+
+func (c *Client) send(ctx context.Context, method, endpoint string, payload []byte, out any) error {
+	var reqBody io.Reader
+	if payload != nil {
+		reqBody = bytes.NewReader(payload)
 	}
 	req, err := http.NewRequestWithContext(ctx, method, endpoint, reqBody)
 	if err != nil {
@@ -107,7 +137,7 @@ func (c *Client) do(ctx context.Context, method, endpoint string, body, out any)
 	req.Header.Set(apiKeyHeader, c.token.Reveal())
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", c.userAgent)
-	if body != nil {
+	if payload != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
 
@@ -119,7 +149,9 @@ func (c *Client) do(ctx context.Context, method, endpoint string, body, out any)
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return newAPIError(resp)
+		e := newAPIError(resp)
+		e.retryIn = retryDelay(resp.Header.Get("Retry-After"), e.Message)
+		return e
 	}
 	if out == nil {
 		return nil
@@ -128,4 +160,21 @@ func (c *Client) do(ctx context.Context, method, endpoint string, body, out any)
 		return fmt.Errorf("api: decode %s response: %w", req.URL.Path, err)
 	}
 	return nil
+}
+
+// retryDelay reads the delay to wait before retrying from the Retry-After
+// header (seconds) or the message ("retry after 1s"), bounded.
+func retryDelay(header, message string) time.Duration {
+	d := defaultRetryIn
+	if secs, err := strconv.ParseFloat(strings.TrimSpace(header), 64); err == nil && secs >= 0 {
+		d = time.Duration(secs * float64(time.Second))
+	} else if m := retryAfterMessage.FindStringSubmatch(message); m != nil {
+		v, _ := strconv.ParseFloat(m[1], 64)
+		unit := time.Second
+		if m[2] == "ms" {
+			unit = time.Millisecond
+		}
+		d = time.Duration(v * float64(unit))
+	}
+	return min(max(d, 100*time.Millisecond), maxRetryIn)
 }

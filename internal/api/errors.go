@@ -7,12 +7,15 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // Error is a non-2xx response from the platform.
 type Error struct {
 	StatusCode int
 	Message    string // server-provided message, possibly empty
+
+	retryIn time.Duration // for 429: how long the platform asks to wait
 }
 
 func (e *Error) Error() string {

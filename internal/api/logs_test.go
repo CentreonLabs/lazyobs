@@ -268,3 +268,37 @@ func assertJSONEqual(t *testing.T, got, want map[string]any) {
 		t.Errorf("JSON mismatch\n got: %s\nwant: %s", g, w)
 	}
 }
+
+func TestRateLimitedRequestsAreRetried(t *testing.T) {
+	calls := 0
+	c := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		if calls < 3 {
+			if calls == 1 {
+				w.Header().Set("Retry-After", "0.1")
+			}
+			w.WriteHeader(http.StatusTooManyRequests)
+			_, _ = w.Write([]byte(`{"message":"rate limit exceeded, retry after 100ms"}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"hits":[],"num_hits":7,"errors":[]}`))
+	})
+	resp, err := c.SearchLogs(context.Background(), api.LogSearchRequest{MaxHits: 1})
+	if err != nil || resp.NumHits != 7 || calls != 3 {
+		t.Fatalf("calls %d, err %v", calls, err)
+	}
+}
+
+func TestRateLimitGivesUp(t *testing.T) {
+	calls := 0
+	c := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		w.Header().Set("Retry-After", "0")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"message":"rate limit exceeded"}`))
+	})
+	_, err := c.SearchLogs(context.Background(), api.LogSearchRequest{MaxHits: 1})
+	if api.StatusCode(err) != http.StatusTooManyRequests || calls != 3 || !strings.Contains(err.Error(), "rate limited") {
+		t.Fatalf("calls %d, err %v", calls, err)
+	}
+}
