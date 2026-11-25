@@ -275,52 +275,102 @@ func ceilSecond(t time.Time) int64 {
 	return t.Unix()
 }
 
-// filter is a tiny subset of the Quickwit syntax: whitespace-separated terms,
-// all required. "field:value" matches service_name, severity_text or a
-// top-level attribute; a bare word matches the body (case-insensitive);
-// "*" and the AND keyword are ignored.
-type filter struct {
-	fields map[string]string
-	words  []string
+// filter is a tiny subset of the Quickwit syntax: terms separated by
+// spaces, all required (AND is implied); NOT or a leading "-" excludes the
+// next term. "field:value" matches a field (body and body.message by
+// substring, others exactly, case-insensitively); a bare word matches the
+// body. Values may be quoted. "*" and the AND keyword are ignored.
+type filter struct{ terms []filterTerm }
+
+type filterTerm struct {
+	field, value string // field is empty for a word of the body
+	negated      bool
 }
 
 func parseFilter(text string) (filter, error) {
-	f := filter{fields: map[string]string{}}
-	for _, term := range strings.Fields(text) {
-		if term == "*" || term == "AND" {
+	var f filter
+	negate := false
+	for _, tok := range splitQuery(text) {
+		switch {
+		case tok == "*" || tok == "AND":
 			continue
-		}
-		if strings.ContainsAny(term, "()") {
-			return filter{}, fmt.Errorf("fake: unsupported query syntax %q", term)
-		}
-		if k, v, ok := strings.Cut(term, ":"); ok {
-			f.fields[k] = strings.ToLower(strings.Trim(v, `"`))
+		case tok == "NOT":
+			negate = true
 			continue
+		case strings.ContainsAny(tok, "()") || tok == "OR":
+			return filter{}, fmt.Errorf("fake: unsupported query syntax %q", tok)
 		}
-		f.words = append(f.words, strings.ToLower(strings.Trim(term, `"`)))
+		t := filterTerm{negated: negate}
+		if rest, ok := strings.CutPrefix(tok, "-"); ok {
+			t.negated, tok = !t.negated, rest
+		}
+		if k, v, ok := strings.Cut(tok, ":"); ok && k != "" && !strings.HasPrefix(k, `"`) {
+			t.field, t.value = k, unquote(v)
+		} else {
+			t.value = unquote(tok)
+		}
+		f.terms = append(f.terms, t)
+		negate = false
 	}
 	return f, nil
 }
 
-func (f filter) isEmpty() bool { return len(f.fields) == 0 && len(f.words) == 0 }
-
-func (f filter) match(r logs.Record) bool {
-	for k, want := range f.fields {
-		got, ok := fieldValue(r, k)
-		if !ok {
-			if v, found := r.Attributes[k]; found { // bare attribute name
-				got, ok = fmt.Sprint(v), true
+// splitQuery splits on spaces outside double quotes.
+func splitQuery(text string) []string {
+	var out []string
+	var cur strings.Builder
+	quoted := false
+	for i, r := range text {
+		switch {
+		case r == '"' && (i == 0 || text[i-1] != '\\'):
+			quoted = !quoted
+			cur.WriteRune(r)
+		case r == ' ' && !quoted:
+			if cur.Len() > 0 {
+				out = append(out, cur.String())
+				cur.Reset()
 			}
-		}
-		if !ok || !strings.EqualFold(got, want) {
-			return false
+		default:
+			cur.WriteRune(r)
 		}
 	}
-	body := strings.ToLower(r.Body)
-	for _, w := range f.words {
-		if !strings.Contains(body, w) {
+	if cur.Len() > 0 {
+		out = append(out, cur.String())
+	}
+	return out
+}
+
+func unquote(v string) string {
+	if len(v) >= 2 && strings.HasPrefix(v, `"`) && strings.HasSuffix(v, `"`) {
+		v = strings.ReplaceAll(v[1:len(v)-1], `\"`, `"`)
+	}
+	return v
+}
+
+func (f filter) isEmpty() bool { return len(f.terms) == 0 }
+
+func (f filter) match(r logs.Record) bool {
+	for _, t := range f.terms {
+		if t.matches(r) == t.negated {
 			return false
 		}
 	}
 	return true
+}
+
+func (t filterTerm) matches(r logs.Record) bool {
+	want := strings.ToLower(t.value)
+	switch t.field {
+	case "", "body", "body.message":
+		return strings.Contains(strings.ToLower(r.Body), want)
+	}
+	got, ok := fieldValue(r, t.field)
+	if !ok {
+		v, found := r.Attributes[t.field] // bare attribute name
+		if !found {
+			return false
+		}
+		got = fmt.Sprint(v)
+	}
+	return strings.EqualFold(got, want)
 }

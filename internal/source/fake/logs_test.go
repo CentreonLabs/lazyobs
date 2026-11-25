@@ -152,3 +152,35 @@ func TestLatencyRespectsContext(t *testing.T) {
 		t.Fatal("expected context error")
 	}
 }
+
+func TestFilterSyntax(t *testing.T) {
+	src := fake.NewLogs(1, clock(now))
+	q := func(text string) obs.Page[logs.Record] {
+		t.Helper()
+		return search(t, src, obs.Query{Text: text, Range: obs.Last(30 * time.Minute), Limit: 1000})
+	}
+	all := q("*")
+	notAuth := q("NOT service_name:auth")
+	dashAuth := q("-service_name:auth")
+	auth := q("service_name:auth")
+	if notAuth.Total+auth.Total != all.Total || dashAuth.Total != notAuth.Total || auth.Total == 0 {
+		t.Fatalf("all %d, auth %d, NOT auth %d, -auth %d", all.Total, auth.Total, notAuth.Total, dashAuth.Total)
+	}
+	for _, r := range notAuth.Items {
+		if r.Service == "auth" {
+			t.Fatal("NOT not applied")
+		}
+	}
+	phrase := q(`body.message:"health check"`)
+	if phrase.Total == 0 {
+		t.Fatal("quoted phrase on body.message found nothing")
+	}
+	for _, r := range phrase.Items {
+		if !strings.Contains(r.Body, "health check") {
+			t.Fatalf("phrase leaked %q", r.Body)
+		}
+	}
+	if _, err := src.Search(context.Background(), obs.Query{Text: "a:1 OR b:2", Range: obs.Last(time.Minute)}); err == nil {
+		t.Error("OR is not supported by the demo source and must say so")
+	}
+}
