@@ -22,6 +22,20 @@ func valueAt(points []obs.Point, t time.Time, step time.Duration) (float64, bool
 	return points[i].Value, true
 }
 
+// BucketAt returns the bucket containing t: its bounds and the total of the
+// series in it. ok is false when no series has a point there.
+func BucketAt(series []obs.Series, from, to, t time.Time) (start, end time.Time, total float64, ok bool) {
+	step := BucketSize(series, from, to)
+	for _, s := range series {
+		if v, found := valueAt(s.Points, t, step); found {
+			total += v
+			ok = true
+		}
+	}
+	start = bucketStart(series, t, step)
+	return start, start.Add(step), total, ok
+}
+
 // bucketStart returns the start of the bucket containing t, falling back to t.
 func bucketStart(series []obs.Series, t time.Time, step time.Duration) time.Time {
 	for _, s := range series {

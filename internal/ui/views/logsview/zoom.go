@@ -62,7 +62,7 @@ func (m *Model) onDragEnd(mouse tea.Mouse) tea.Cmd {
 	d := m.drag
 	m.drag = nil
 	if d.to-d.from+1 < minZoomColumns {
-		return nil
+		return m.jumpToColumn(d.anchor) // a click: go to that bucket in the list
 	}
 	return m.zoomTo(obs.Between(d.start.Truncate(time.Second), d.end.Add(time.Second-1).Truncate(time.Second)))
 }

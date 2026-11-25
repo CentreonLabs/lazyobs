@@ -103,6 +103,9 @@ func (m *Model) resultSummary() string {
 	if m.liveNew > 0 {
 		s += fmt.Sprintf(" +%s live", humanCount(int64(m.liveNew)))
 	}
+	if !m.listEnd.IsZero() {
+		s = fmt.Sprintf("before %s · r for the latest · %s", m.listEnd.In(m.location()).Format("15:04:05"), s)
+	}
 	return t.Dim.Render(fmt.Sprintf("%s · %s", s, m.elapsed.Round(time.Millisecond)))
 }
 

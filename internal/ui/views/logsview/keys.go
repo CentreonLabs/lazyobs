@@ -30,6 +30,7 @@ type keyMap struct {
 	// Mouse actions, listed in the help only (their keys never match a key press).
 	MouseHover  key.Binding
 	MouseZoom   key.Binding
+	MouseJump   key.Binding
 	MouseToggle key.Binding
 	MouseSolo   key.Binding
 	MouseSelect key.Binding
@@ -76,6 +77,7 @@ func defaultKeys() keyMap {
 
 		MouseHover:  mouseHelp("hover chart", "values of a bucket"),
 		MouseZoom:   mouseHelp("drag on chart", "zoom in"),
+		MouseJump:   mouseHelp("click on chart", "go to that bucket's logs"),
 		MouseToggle: mouseHelp("click level", "show/hide it"),
 		MouseSolo:   mouseHelp("right-click level", "show only it"),
 		MouseSelect: mouseHelp("click row", "select log"),
@@ -100,7 +102,7 @@ func (k keyMap) help() [][]key.Binding {
 		k.Bindings(),
 		{k.FilterIn, k.FilterOut, k.ZoomOut, k.Earlier, k.Later, k.Refresh, k.Focus, k.Close, k.Copy, k.UTC, k.Layout},
 		{k.DeleteWord, k.ClearLine},
-		{k.MouseHover, k.MouseZoom, k.MouseToggle, k.MouseSolo, k.MouseSelect, k.MouseWheel},
+		{k.MouseHover, k.MouseJump, k.MouseZoom, k.MouseToggle, k.MouseSolo, k.MouseSelect, k.MouseWheel},
 	}
 }
 

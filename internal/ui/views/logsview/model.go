@@ -121,6 +121,8 @@ type Model struct {
 	// Zoom: the span being dragged on the timeline, and the ranges to go
 	// back to when zooming out.
 	drag      *dragSpan
+	jump      *jump     // list moving to a clicked bucket
+	listEnd   time.Time // when set, the list starts at this time (see seek)
 	zoomStack []obs.TimeRange
 	hover     *chart.Cell // pointer over the timeline plot, nil otherwise
 
@@ -355,6 +357,7 @@ func (m *Model) search() tea.Cmd {
 	m.records, m.hist, m.err = nil, nil, nil
 	m.histFrom, m.histTo = time.Time{}, time.Time{}
 	m.cursor, m.top, m.liveNew = 0, 0, 0
+	m.jump, m.listEnd = nil, time.Time{}
 	m.loading = true
 	m.setDetail()
 	return tea.Batch(m.fetchPage(), m.fetchHistogram())
@@ -415,6 +418,9 @@ func (m *Model) onPage(msg pageMsg) tea.Cmd {
 	}
 	if cmd := m.findAnchor(); cmd != nil {
 		return tea.Batch(append(cmds, cmd)...)
+	}
+	if m.jump != nil {
+		return tea.Batch(append(cmds, m.continueJump())...)
 	}
 	cmds = append(cmds, m.maybeLoadMore())
 	return tea.Batch(cmds...)
