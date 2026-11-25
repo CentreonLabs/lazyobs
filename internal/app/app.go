@@ -105,7 +105,9 @@ type Model struct {
 
 	notice   NotifyMsg
 	noticeID int
-	startup  []tea.Cmd // notifications queued before the program starts
+
+	signalHits [][2]int  // header columns [from, to) of each signal tab
+	startup    []tea.Cmd // notifications queued before the program starts
 }
 
 // New returns the root model. The first tab with a view is active.
@@ -172,6 +174,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.MouseClickMsg:
+		if mouse := msg.Mouse(); mouse.Y == 0 && mouse.Button == tea.MouseLeft {
+			return m, m.clickHeader(mouse.X)
+		}
 		if mouse, ok := m.bodyMouse(msg.Mouse()); ok {
 			return m, m.updateActive(tea.MouseClickMsg(mouse))
 		}
@@ -263,6 +268,21 @@ func (m *Model) bodyMouse(mouse tea.Mouse) (tea.Mouse, bool) {
 	return mouse, true
 }
 
+// clickHeader shows the signal whose tab is under column x.
+func (m *Model) clickHeader(x int) tea.Cmd {
+	for i, h := range m.signalHits {
+		if x < h[0] || x >= h[1] {
+			continue
+		}
+		if m.tabs[i].View == nil {
+			return Notify(LevelInfo, "%s are not available yet", strings.ToLower(m.tabs[i].Title))
+		}
+		m.active, m.showHelp = i, false
+		return nil
+	}
+	return nil
+}
+
 // Active is the index of the shown signal.
 func (m *Model) Active() int { return m.active }
 
@@ -330,16 +350,23 @@ func (m *Model) render() string {
 func (m *Model) renderHeader() string {
 	t := m.theme
 	parts := []string{t.Title.Render(" lazyobs ")}
+	x := lipgloss.Width(parts[0])
+	m.signalHits = m.signalHits[:0]
 	for i, tab := range m.tabs {
 		label := fmt.Sprintf("%d %s", i+1, tab.Title)
+		var part string
 		switch {
 		case tab.View == nil:
-			parts = append(parts, t.Disabled.Render(label))
+			part = t.Disabled.Render(label)
 		case i == m.active:
-			parts = append(parts, t.ActiveTab.Render(label))
+			part = t.ActiveTab.Render(label)
 		default:
-			parts = append(parts, t.Tab.Render(label))
+			part = t.Tab.Render(label)
 		}
+		w := lipgloss.Width(part)
+		m.signalHits = append(m.signalHits, [2]int{x, x + w})
+		x += w
+		parts = append(parts, part)
 	}
 	left := lipgloss.JoinHorizontal(lipgloss.Top, parts...)
 	right := t.Dim.Render(m.context + " ")

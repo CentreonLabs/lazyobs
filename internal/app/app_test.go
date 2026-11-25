@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/CentreonLabs/lazyobs/internal/app"
 	"github.com/CentreonLabs/lazyobs/internal/obs"
 	"github.com/CentreonLabs/lazyobs/internal/source/fake"
@@ -192,5 +194,35 @@ func TestTimelineLayouts(t *testing.T) {
 	small := start(t, 120, 16, logsview.Options{})
 	if strings.Contains(small.Screen(), "Log volume") {
 		t.Error("short terminals must use the compact timeline")
+	}
+}
+
+func TestClickSignalTabs(t *testing.T) {
+	src := fake.NewLogs(42, func() time.Time { return now })
+	th := theme.New(true)
+	opts := logsview.Options{Source: src, Theme: th, Now: func() time.Time { return now }}
+	root := app.New("test", th,
+		app.Tab{Title: "Logs", View: logsview.New(opts)},
+		app.Tab{Title: "Traces", View: logsview.New(opts)},
+		app.Tab{Title: "Metrics"},
+	)
+	d := uitest.New(t, root, 120, 30)
+	x, y, ok := d.Find("2 Traces")
+	if !ok || y != 0 {
+		t.Fatalf("header tab not found:\n%s", d.Screen())
+	}
+	d.Click(x+2, 0, tea.MouseLeft, 0)
+	if root.Active() != 1 {
+		t.Fatal("click on 2 Traces must show traces")
+	}
+	x, _, _ = d.Find("1 Logs")
+	d.Click(x, 0, tea.MouseLeft, 0)
+	if root.Active() != 0 {
+		t.Fatal("click on 1 Logs must show logs")
+	}
+	x, _, _ = d.Find("3 Metrics")
+	d.Click(x+1, 0, tea.MouseLeft, 0)
+	if root.Active() != 0 || !strings.Contains(d.Screen(), "metrics are not available yet") {
+		t.Fatal("an unavailable signal must say so")
 	}
 }

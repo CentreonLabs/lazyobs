@@ -75,7 +75,7 @@ lazyobs --demo                                   # try it without an account
 | `ctrl+t` / `ctrl+w`                             | New tab (from the current search) / close tab                                    |
 | `<` / `>`, click a tab                          | Previous / next tab                                                              |
 | `T`                                             | Open the trace of the selected log                                               |
-| `1` `2` `3`                                     | Switch signal (logs, traces; metrics soon)                                       |
+| `1` `2` `3`, click a header tab                 | Switch signal (logs, traces; metrics soon)                                       |
 | `?`                                             | Help                                                                             |
 | `q`                                             | Quit                                                                             |
 

@@ -20,9 +20,9 @@ func DefaultGlobal() Global {
 		Quit:    key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
 		ForceQ:  key.NewBinding(key.WithKeys("ctrl+c"), key.WithHelp("ctrl+c", "quit")),
 		Help:    key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "toggle help")),
-		Signal1: key.NewBinding(key.WithKeys("1"), key.WithHelp("1", "logs")),
-		Signal2: key.NewBinding(key.WithKeys("2"), key.WithHelp("2", "traces")),
-		Signal3: key.NewBinding(key.WithKeys("3"), key.WithHelp("3", "metrics")),
+		Signal1: key.NewBinding(key.WithKeys("1"), key.WithHelp("1", "logs screen (or click its tab)")),
+		Signal2: key.NewBinding(key.WithKeys("2"), key.WithHelp("2", "traces screen")),
+		Signal3: key.NewBinding(key.WithKeys("3"), key.WithHelp("3", "metrics screen")),
 	}
 }
 
