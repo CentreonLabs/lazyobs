@@ -24,6 +24,7 @@ type hitAreas struct {
 	listRows     int
 	listRight    int // first column after the list panel
 	detailActive bool
+	detailTop    int // body row of the first detail line
 
 	chart        chart.Layout
 	plotX, plotY int // body position of the plot area
@@ -61,6 +62,13 @@ func (m *Model) onClick(mouse tea.Mouse) tea.Cmd {
 	}
 	if h.detailActive && mouse.X >= h.listRight {
 		m.focus = focusDetail
+		line := m.detail.YOffset() + mouse.Y - h.detailTop
+		for i, e := range m.detailEntries {
+			if e.line == line {
+				m.detailField = i
+			}
+		}
+		m.renderDetailContent()
 		return nil
 	}
 	if row := mouse.Y - h.listTop; row >= 0 && row < h.listRows && mouse.X < h.listRight {

@@ -8,22 +8,24 @@ import (
 
 type keyMap struct {
 	keys.List
-	Query   key.Binding
-	Ask     key.Binding
-	ZoomOut key.Binding
-	Earlier key.Binding
-	Later   key.Binding
-	Range   key.Binding
-	Refresh key.Binding
-	Detail  key.Binding
-	Focus   key.Binding
-	Close   key.Binding
-	Live    key.Binding
-	Pause   key.Binding
-	Copy    key.Binding
-	Context key.Binding
-	UTC     key.Binding
-	Layout  key.Binding
+	Query     key.Binding
+	Ask       key.Binding
+	ZoomOut   key.Binding
+	Earlier   key.Binding
+	Later     key.Binding
+	Range     key.Binding
+	Refresh   key.Binding
+	Detail    key.Binding
+	Focus     key.Binding
+	Close     key.Binding
+	Live      key.Binding
+	Pause     key.Binding
+	Copy      key.Binding
+	Context   key.Binding
+	FilterIn  key.Binding
+	FilterOut key.Binding
+	UTC       key.Binding
+	Layout    key.Binding
 
 	// Mouse actions, listed in the help only (their keys never match a key press).
 	MouseHover  key.Binding
@@ -61,8 +63,12 @@ func defaultKeys() keyMap {
 		Pause:   key.NewBinding(key.WithKeys("space"), key.WithHelp("space", "pause live")),
 		Copy:    key.NewBinding(key.WithKeys("y"), key.WithHelp("y", "copy log JSON")),
 		Context: key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "logs around this one")),
-		UTC:     key.NewBinding(key.WithKeys("z"), key.WithHelp("z", "local/UTC time")),
-		Layout:  key.NewBinding(key.WithKeys("v"), key.WithHelp("v", "split/compact timeline")),
+		FilterIn: key.NewBinding(key.WithKeys("+", "="),
+			key.WithHelp("+", "details: filter on the field")),
+		FilterOut: key.NewBinding(key.WithKeys("-"),
+			key.WithHelp("-", "details: exclude the field")),
+		UTC:    key.NewBinding(key.WithKeys("z"), key.WithHelp("z", "local/UTC time")),
+		Layout: key.NewBinding(key.WithKeys("v"), key.WithHelp("v", "split/compact timeline")),
 
 		MouseHover:  mouseHelp("hover chart", "values of a bucket"),
 		MouseZoom:   mouseHelp("drag on chart", "zoom in"),
@@ -85,7 +91,7 @@ func (k keyMap) help() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Query, k.Ask, k.Range, k.Detail, k.Context, k.Live, k.Pause},
 		k.Bindings(),
-		{k.ZoomOut, k.Earlier, k.Later, k.Refresh, k.Focus, k.Close, k.Copy, k.UTC, k.Layout},
+		{k.FilterIn, k.FilterOut, k.ZoomOut, k.Earlier, k.Later, k.Refresh, k.Focus, k.Close, k.Copy, k.UTC, k.Layout},
 		{k.MouseHover, k.MouseZoom, k.MouseToggle, k.MouseSolo, k.MouseSelect, k.MouseWheel},
 	}
 }

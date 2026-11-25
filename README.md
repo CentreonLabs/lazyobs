@@ -12,6 +12,7 @@ observability data without leaving the terminal.
 - Search logs with the Quickwit query syntax over a relative or absolute time range
 - Query autocompletion: field names, then their most frequent values over the displayed period
 - Logs around a log: the same service ±30 s in a new tab, the original log selected and marked
+- Filter from a log: pick a field in the detail panel and add it to the query (`+`) or exclude it (`-`)
 - Ask in plain words ("errors from checkout in the last hour"), translated to a query by the
   platform
 - Zoom on a time span by dragging on the chart
@@ -55,6 +56,7 @@ lazyobs --demo                                   # try it without an account
 | `shift+←` / `shift+→` (or `[` / `]`)           | Move the time range back / forward by a quarter of its span         |
 | `enter` / `esc`                                | Open / close the detail panel                                       |
 | `c`                                            | Logs around the selected one (same service, ±30 s, new tab)         |
+| `tab` then `j`/`k`, `+` / `-`                  | In the detail panel: choose a field, filter on it / exclude it      |
 | `tab`                                          | Switch focus between list and detail                                |
 | `L` / `space`                                  | Live mode on/off / pause and resume it                              |
 | `r`                                            | Refresh                                                             |

@@ -93,9 +93,11 @@ type Model struct {
 
 	cursor, top int
 
-	showDetail bool
-	focus      focusArea
-	detail     viewport.Model
+	showDetail    bool
+	focus         focusArea
+	detail        viewport.Model
+	detailEntries []filterEntry // filterable fields of the detail panel
+	detailField   int           // selected entry
 
 	mode      inputMode
 	input     textinput.Model
@@ -191,6 +193,12 @@ func (m *Model) ShortHelp() []key.Binding {
 		return []key.Binding{k.NextPreset, k.Submit, k.Cancel}
 	case modeAsk:
 		return []key.Binding{short(k.Submit, "ask"), k.Cancel}
+	}
+	if m.detailFocused() {
+		return []key.Binding{
+			short(k.FilterIn, "filter on field"), short(k.FilterOut, "exclude"),
+			short(k.Down, "field"), short(k.Focus, "list"), short(k.Context, "around"), k.Close,
+		}
 	}
 	b := []key.Binding{k.Query}
 	if m.opts.Translator != nil {

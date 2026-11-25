@@ -37,6 +37,7 @@ func (m *Model) View(width, height int) string {
 	panelH := lay.panels
 	panelTop := 1 + timelineH
 	m.hits.listTop = panelTop + 2 // border and column header
+	m.hits.detailTop = panelTop + 1
 	m.hits.listRows = max(panelH-3, 0)
 
 	var panels string

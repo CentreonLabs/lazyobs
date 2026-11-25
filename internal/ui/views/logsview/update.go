@@ -15,6 +15,14 @@ import (
 
 func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 	k := m.keys
+	if m.detailFocused() {
+		switch {
+		case key.Matches(msg, k.FilterIn):
+			return m.filterOnDetail(false)
+		case key.Matches(msg, k.FilterOut):
+			return m.filterOnDetail(true) // - zooms out elsewhere
+		}
+	}
 	switch {
 	case key.Matches(msg, k.Query):
 		return tea.Batch(m.openInput(modeQuery, m.query, "service_name:api AND severity_text:ERROR"), m.startCompletion())
@@ -56,13 +64,14 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 		}
 		return nil
 	case key.Matches(msg, k.Close):
-		m.showDetail, m.focus = false, focusList
+		m.showDetail, m.focus, m.detailEntries = false, focusList, nil
 		m.layoutDetail()
 		m.scrollToCursor()
 		return nil
 	case key.Matches(msg, k.Focus):
 		if m.showDetail {
 			m.focus = 1 - m.focus
+			m.renderDetailContent() // show or hide the field selection
 		}
 		return nil
 	}
@@ -107,9 +116,9 @@ func (m *Model) scrollDetail(msg tea.KeyPressMsg) tea.Cmd {
 	k := m.keys
 	switch {
 	case key.Matches(msg, k.Down):
-		m.detail.ScrollDown(1)
+		m.selectDetailField(1)
 	case key.Matches(msg, k.Up):
-		m.detail.ScrollUp(1)
+		m.selectDetailField(-1)
 	case key.Matches(msg, k.Top):
 		m.detail.GotoTop()
 	case key.Matches(msg, k.Bottom):
@@ -124,6 +133,12 @@ func (m *Model) scrollDetail(msg tea.KeyPressMsg) tea.Cmd {
 		m.detail.PageUp()
 	}
 	return nil
+}
+
+// detailFocused reports whether keys act on the detail panel: it has the
+// focus, or it is shown alone on a narrow terminal.
+func (m *Model) detailFocused() bool {
+	return m.showDetail && (m.focus == focusDetail || m.width < sideBySideWidth)
 }
 
 func (m *Model) scrollToCursor() {
