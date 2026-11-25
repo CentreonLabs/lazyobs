@@ -80,7 +80,7 @@ type Model struct {
 	loading  bool
 	err      error
 	elapsed  time.Duration
-	hist     []obs.Point
+	hist     []obs.Series
 	histFrom time.Time
 	histTo   time.Time
 	histCols int // number of buckets last requested
@@ -161,6 +161,7 @@ type (
 	}
 	histMsg struct {
 		id       int
+		cols     int // number of buckets requested
 		from, to time.Time
 		series   []obs.Series
 		err      error
@@ -188,8 +189,10 @@ func (m *Model) Update(msg tea.Msg) (app.SignalView, tea.Cmd) {
 	case pageMsg:
 		return m, m.onPage(msg)
 	case histMsg:
-		if msg.id == m.searchID && msg.err == nil && len(msg.series) > 0 {
-			m.hist, m.histFrom, m.histTo = msg.series[0].Points, msg.from, msg.to
+		// Only the latest request counts: an older one (e.g. sized before the
+		// window size was known) may complete after it.
+		if msg.id == m.searchID && msg.cols == m.histCols && msg.err == nil {
+			m.hist, m.histFrom, m.histTo = msg.series, msg.from, msg.to
 		}
 		return m, nil
 	case tailTickMsg:
@@ -234,8 +237,8 @@ func (m *Model) fetchPage() tea.Cmd {
 }
 
 func (m *Model) fetchHistogram() tea.Cmd {
-	if m.opts.Histogram == nil {
-		return nil
+	if m.opts.Histogram == nil || m.width == 0 {
+		return nil // sized on the first ResizeMsg
 	}
 	id, h := m.searchID, m.opts.Histogram
 	q := m.pager.Query()
@@ -249,7 +252,7 @@ func (m *Model) fetchHistogram() tea.Cmd {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
 		series, err := h.Histogram(ctx, q, buckets)
-		return histMsg{id: id, from: from, to: to, series: series, err: err}
+		return histMsg{id: id, cols: buckets, from: from, to: to, series: series, err: err}
 	}
 }
 

@@ -32,7 +32,7 @@ func newHarness(t *testing.T, opts Options) *harness {
 	h := &harness{clock: &clock{time.Date(2026, 11, 25, 12, 0, 0, 0, time.UTC)}}
 	src := fake.NewLogs(8, h.clock.now)
 	th := theme.New(true)
-	opts.Source, opts.Theme, opts.Now = src, th, h.clock.now
+	opts.Source, opts.Histogram, opts.Theme, opts.Now = src, src, th, h.clock.now
 	opts.After = func(_ time.Duration, msg tea.Msg) tea.Cmd {
 		h.ticks = append(h.ticks, msg)
 		return nil
@@ -140,5 +140,17 @@ func TestCopyAndUTC(t *testing.T) {
 	h.d.Keys("z", "enter")
 	if s := h.d.Screen(); !strings.Contains(s, "UTC") {
 		t.Errorf("UTC toggle not visible:\n%s", s)
+	}
+}
+
+func TestOutdatedHistogramIsIgnored(t *testing.T) {
+	h := newHarness(t, Options{})
+	if len(h.view.hist) == 0 || h.view.histCols == 0 {
+		t.Fatal("histogram not loaded")
+	}
+	current := h.view.hist
+	h.d.Send(histMsg{id: h.view.searchID, cols: h.view.histCols + 7, from: h.view.histFrom, to: h.view.histTo, series: nil})
+	if len(h.view.hist) != len(current) {
+		t.Fatal("a response to an outdated request replaced the timeline")
 	}
 }

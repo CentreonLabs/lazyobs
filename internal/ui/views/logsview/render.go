@@ -8,7 +8,6 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/CentreonLabs/lazyobs/internal/obs"
 	"github.com/CentreonLabs/lazyobs/internal/obs/logs"
 )
 
@@ -29,23 +28,23 @@ func (m *Model) View(width, height int) string {
 	bar := m.renderBar()
 	timeline := m.renderSpark()
 	if lay.timeline > 0 {
-		timeline = m.box(m.renderTimeline(width-2, lay.timeline-2), width-2, lay.timeline-2, false)
+		timeline = m.box("Log volume by severity", m.renderTimeline(width-2, lay.timeline-2), width-2, lay.timeline-2, false)
 	}
 	panelH := lay.panels
 
 	var panels string
 	switch {
 	case !m.showDetail:
-		panels = m.box(m.renderList(width-2, panelH-2), width-2, panelH-2, m.focus == focusList)
+		panels = m.box("Logs", m.renderList(width-2, panelH-2), width-2, panelH-2, m.focus == focusList)
 	case width >= sideBySideWidth:
 		lw := width * 55 / 100
 		dw := width - lw
 		panels = lipgloss.JoinHorizontal(lipgloss.Top,
-			m.box(m.renderList(lw-2, panelH-2), lw-2, panelH-2, m.focus == focusList),
-			m.box(m.detail.View(), dw-2, panelH-2, m.focus == focusDetail),
+			m.box("Logs", m.renderList(lw-2, panelH-2), lw-2, panelH-2, m.focus == focusList),
+			m.box("Details", m.detail.View(), dw-2, panelH-2, m.focus == focusDetail),
 		)
 	default:
-		panels = m.box(m.detail.View(), width-2, panelH-2, true)
+		panels = m.box("Details", m.detail.View(), width-2, panelH-2, true)
 	}
 	return lipgloss.JoinVertical(lipgloss.Left, bar, timeline, panels)
 }
@@ -96,11 +95,10 @@ func (m *Model) resultSummary() string {
 }
 
 func (m *Model) renderSpark() string {
-	if len(m.hist) == 0 || m.width < 20 {
+	if len(m.hist) == 0 || m.width < 20 || !m.histFrom.Before(m.histTo) {
 		return ""
 	}
-	width := m.width - 12
-	values := resample(m.hist, width)
+	values := totalSeries(m.hist, m.histFrom, m.histTo, m.width-12)
 	var peak float64
 	for _, v := range values {
 		peak = max(peak, v)
@@ -115,23 +113,6 @@ func (m *Model) renderSpark() string {
 		b.WriteRune(blocks[min(int(v/peak*float64(len(blocks)-1)+0.5), len(blocks)-1)])
 	}
 	return m.th.Spark.Render(b.String()) + m.th.Dim.Render(fmt.Sprintf(" max %s", humanCount(int64(peak))))
-}
-
-// resample sums points into n buckets.
-func resample(points []obs.Point, n int) []float64 {
-	out := make([]float64, n)
-	if len(points) == 0 || n <= 0 {
-		return out
-	}
-	for i, p := range points {
-		out[min(i*n/len(points), n-1)] += p.Value
-	}
-	if len(points) < n { // stretch instead of leaving gaps
-		for i := range out {
-			out[i] = points[min(i*len(points)/n, len(points)-1)].Value
-		}
-	}
-	return out
 }
 
 func (m *Model) renderList(width, height int) string {
@@ -177,11 +158,14 @@ func (m *Model) renderList(width, height int) string {
 	return strings.Join(lines, "\n")
 }
 
-// box draws content inside a rounded border of the given inner size.
-func (m *Model) box(content string, innerW, innerH int, focused bool) string {
-	style := m.th.Border
+// box draws content inside a rounded border of the given inner size, with
+// the title set in the top border like a dashboard panel.
+func (m *Model) box(title, content string, innerW, innerH int, focused bool) string {
+	border := lipgloss.NewStyle().Foreground(m.th.Subtle)
+	titleStyle := m.th.PanelTitle
 	if focused {
-		style = m.th.FocusedBox
+		border = lipgloss.NewStyle().Foreground(m.th.Accent)
+		titleStyle = titleStyle.Foreground(m.th.Accent)
 	}
 	lines := strings.Split(content, "\n")
 	if len(lines) > innerH {
@@ -190,10 +174,21 @@ func (m *Model) box(content string, innerW, innerH int, focused bool) string {
 	for len(lines) < innerH {
 		lines = append(lines, "")
 	}
-	for i, l := range lines {
-		lines[i] = fit(l, innerW)
+
+	title = ansi.Truncate(title, max(innerW-4, 0), "…")
+	rest := max(innerW-ansi.StringWidth(title)-3, 0)
+	top := border.Render("╭─ ") + titleStyle.Render(title) + border.Render(" "+strings.Repeat("─", rest)+"╮")
+	if title == "" {
+		top = border.Render("╭" + strings.Repeat("─", innerW) + "╮")
 	}
-	return style.Render(strings.Join(lines, "\n"))
+	out := make([]string, 0, innerH+2)
+	out = append(out, top)
+	side := border.Render("│")
+	for _, l := range lines {
+		out = append(out, side+fit(l, innerW)+side)
+	}
+	out = append(out, border.Render("╰"+strings.Repeat("─", innerW)+"╯"))
+	return strings.Join(out, "\n")
 }
 
 // fit truncates or pads s to exactly w cells.

@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/CentreonLabs/lazyobs/internal/obs/logs"
+	"github.com/CentreonLabs/lazyobs/internal/ui/chart"
 )
 
 // Theme is the set of styles used by the interface.
@@ -29,15 +30,16 @@ type Theme struct {
 	Selected   lipgloss.Style // selected row
 	Dim        lipgloss.Style
 	Key        lipgloss.Style // field names in the detail panel
-	Border     lipgloss.Style // panel border (unfocused)
-	FocusedBox lipgloss.Style // panel border (focused)
 	StatusBar  lipgloss.Style
 	ErrorText  lipgloss.Style
 	WarnText   lipgloss.Style
 	Badge      lipgloss.Style // e.g. LIVE / PAUSED
 	Spark      lipgloss.Style
+	PanelTitle lipgloss.Style
+	Chart      chart.Styles
 
-	severity map[logs.Severity]lipgloss.Style
+	severity      map[logs.Severity]lipgloss.Style
+	severityColor map[logs.Severity]color.Color
 }
 
 // New builds the theme for a dark or light terminal background.
@@ -63,24 +65,45 @@ func New(dark bool) *Theme {
 	t.Selected = lipgloss.NewStyle().Background(selBg).Foreground(fg)
 	t.Dim = lipgloss.NewStyle().Foreground(t.Muted)
 	t.Key = lipgloss.NewStyle().Bold(true).Foreground(t.Accent)
-	t.Border = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(t.Subtle)
-	t.FocusedBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(t.Accent)
 	t.StatusBar = lipgloss.NewStyle().Foreground(t.Muted)
 	t.ErrorText = lipgloss.NewStyle().Foreground(t.Error)
 	t.WarnText = lipgloss.NewStyle().Foreground(t.Warning)
 	t.Badge = lipgloss.NewStyle().Bold(true).Padding(0, 1).Foreground(ld(lipgloss.Color("#FFFFFF"), lipgloss.Color("#111827")))
 	t.Spark = lipgloss.NewStyle().Foreground(t.Accent)
 
-	t.severity = map[logs.Severity]lipgloss.Style{
-		logs.SeverityUnknown: lipgloss.NewStyle().Foreground(t.Muted),
-		logs.SeverityTrace:   lipgloss.NewStyle().Foreground(t.Muted),
-		logs.SeverityDebug:   lipgloss.NewStyle().Foreground(ld(lipgloss.Color("#1D4ED8"), lipgloss.Color("#60A5FA"))),
-		logs.SeverityInfo:    lipgloss.NewStyle().Foreground(t.Success),
-		logs.SeverityWarn:    lipgloss.NewStyle().Foreground(t.Warning),
-		logs.SeverityError:   lipgloss.NewStyle().Foreground(t.Error).Bold(true),
-		logs.SeverityFatal:   lipgloss.NewStyle().Foreground(ld(lipgloss.Color("#FFFFFF"), lipgloss.Color("#FFFFFF"))).Background(t.Error).Bold(true),
+	t.PanelTitle = lipgloss.NewStyle().Bold(true).Foreground(fg)
+	t.Chart = chart.Styles{
+		Axis:   lipgloss.NewStyle().Foreground(t.Muted),
+		Grid:   lipgloss.NewStyle().Foreground(t.Subtle),
+		Marker: lipgloss.NewStyle().Foreground(t.Accent),
+		Legend: lipgloss.NewStyle().Foreground(fg),
 	}
+
+	// Grafana-like palette: green info, yellow warnings, red errors.
+	t.severityColor = map[logs.Severity]color.Color{
+		logs.SeverityUnknown: t.Muted,
+		logs.SeverityTrace:   ld(lipgloss.Color("#9CA3AF"), lipgloss.Color("#6B7280")),
+		logs.SeverityDebug:   ld(lipgloss.Color("#1D4ED8"), lipgloss.Color("#5794F2")),
+		logs.SeverityInfo:    ld(lipgloss.Color("#15803D"), lipgloss.Color("#73BF69")),
+		logs.SeverityWarn:    ld(lipgloss.Color("#B45309"), lipgloss.Color("#FADE2A")),
+		logs.SeverityError:   ld(lipgloss.Color("#B91C1C"), lipgloss.Color("#F2495C")),
+		logs.SeverityFatal:   ld(lipgloss.Color("#86198F"), lipgloss.Color("#E04FF0")),
+	}
+	t.severity = map[logs.Severity]lipgloss.Style{}
+	for sev, c := range t.severityColor {
+		t.severity[sev] = lipgloss.NewStyle().Foreground(c)
+	}
+	t.severity[logs.SeverityError] = t.severity[logs.SeverityError].Bold(true)
+	t.severity[logs.SeverityFatal] = t.severity[logs.SeverityFatal].Bold(true)
 	return t
+}
+
+// SeverityColor returns the color of a log level.
+func (t *Theme) SeverityColor(s logs.Severity) color.Color {
+	if c, ok := t.severityColor[s]; ok {
+		return c
+	}
+	return t.Muted
 }
 
 // Severity returns the style of a log level.

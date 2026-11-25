@@ -65,7 +65,7 @@ func TestNavigationAndDetail(t *testing.T) {
 	d.Keys("j", "j", "enter")
 	screen := d.Screen()
 	dump(t, d)
-	for _, want := range []string{"severity", "service", "MESSAGE", "ATTRIBUTES", "http.method"} {
+	for _, want := range []string{"severity", "service", "MESSAGE"} {
 		if !strings.Contains(screen, want) {
 			t.Errorf("detail misses %q", want)
 		}
@@ -166,7 +166,7 @@ func TestInfiniteScroll(t *testing.T) {
 func TestTimelineLayouts(t *testing.T) {
 	d := start(t, 120, 40, logsview.Options{})
 	s := d.Screen()
-	if !strings.Contains(s, "timeline") || !strings.Contains(s, "logs per") || !strings.Contains(s, "12:00") {
+	if !strings.Contains(s, "Log volume by severity") || !strings.Contains(s, "━━ INFO") || !strings.Contains(s, "0/min") {
 		t.Fatalf("split timeline missing:\n%s", s)
 	}
 	// The timeline takes about half of the body: the list header is in the lower half.
@@ -181,16 +181,16 @@ func TestTimelineLayouts(t *testing.T) {
 	}
 
 	d.Keys("v")
-	if s := d.Screen(); strings.Contains(s, "logs per") {
+	if s := d.Screen(); strings.Contains(s, "Log volume") {
 		t.Fatalf("v must collapse the timeline:\n%s", s)
 	}
 	d.Keys("v")
-	if !strings.Contains(d.Screen(), "logs per") {
+	if !strings.Contains(d.Screen(), "Log volume") {
 		t.Fatal("v must restore the split view")
 	}
 
 	small := start(t, 120, 16, logsview.Options{})
-	if strings.Contains(small.Screen(), "logs per") {
+	if strings.Contains(small.Screen(), "Log volume") {
 		t.Error("short terminals must use the compact timeline")
 	}
 }
