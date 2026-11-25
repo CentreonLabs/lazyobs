@@ -20,6 +20,7 @@ observability data without leaving the terminal.
 - Live mode (like `tail -f`) with pause/resume
 - Keyboard-driven navigation with vim/lazygit-style shortcuts and a help screen (`?`)
 - Several profiles (contexts), like `kubectl`
+- Tabs: several searches side by side, each with its own query, time range and live mode
 - A `--demo` mode with synthetic data, no account needed
 
 ## Installation
@@ -58,6 +59,8 @@ lazyobs --demo                                   # try it without an account
 | click a level in the legend          | Show / hide that level in the timeline                      |
 | right-click a level                  | Show only that level (again: show all)                      |
 | click a row, wheel                   | Select a log, scroll                                        |
+| `ctrl+t` / `ctrl+w`                  | New tab (from the current search) / close tab               |
+| `<` / `>`, click a tab               | Previous / next tab                                         |
 | `1` `2` `3`                          | Switch signal (logs; traces, metrics soon)                  |
 | `?`                                  | Help                                                        |
 | `q`                                  | Quit                                                        |

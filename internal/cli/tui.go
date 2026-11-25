@@ -14,6 +14,7 @@ import (
 	"github.com/CentreonLabs/lazyobs/internal/obs/logs"
 	"github.com/CentreonLabs/lazyobs/internal/source/fake"
 	"github.com/CentreonLabs/lazyobs/internal/source/remote"
+	"github.com/CentreonLabs/lazyobs/internal/ui/tabset"
 	"github.com/CentreonLabs/lazyobs/internal/ui/theme"
 	"github.com/CentreonLabs/lazyobs/internal/ui/views/logsview"
 )
@@ -72,7 +73,7 @@ func (a *app) runTUI(ctx context.Context, opts tuiOptions) error {
 		Theme: th, Query: opts.query, Range: rng,
 	})
 	root := tui.New(label, th,
-		tui.Tab{Title: "Logs", View: logsView},
+		tui.Tab{Title: "Logs", View: tabset.New("Logs", th, logsView)},
 		tui.Tab{Title: "Traces"},
 		tui.Tab{Title: "Metrics"},
 	)

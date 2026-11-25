@@ -41,7 +41,7 @@ Adding a signal = domain type in `obs/<signal>`, mapping in `api/`, `remote` sea
 UI conventions:
 
 - Views implement `app.SignalView`; the root forwards key presses to the active view only, other messages (async results, ticks, `app.ResizeMsg`) to every view.
-- Async results carry the search ID / live generation they belong to; stale ones are dropped.
+- Async results carry the ID of the view that asked plus the search ID / live generation they belong to; results of other views and stale ones are dropped. Several instances of a view coexist in tabs (`internal/ui/tabset`).
 - Report errors and warnings with `app.Notify` (status bar), never by printing.
 - UI tests drive the root model with `internal/ui/uitest` (send keys, run commands, read the plain-text screen). Set `LAZYOBS_SCREENS=1` to print screens in `internal/app` tests. Inject `Options.Now` and `Options.After` to control time and live polling.
 - `lazyobs --demo` runs on `source/fake`: use it to try UI changes without an account.
