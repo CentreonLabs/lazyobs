@@ -34,9 +34,17 @@ Dependency direction: `ui → app → engine → obs ← source → api`. `inter
 | `internal/engine`        | UI-free logic: pager (offset → time-window), live tail (poll + dedup)                                      |
 | `internal/config`        | Contexts, env/flag overrides, `Secret` type                                                                |
 | `internal/app`           | Root Bubble Tea model, signal registry (`SignalView`)                                                      |
-| `internal/ui`            | Generic components, keymap, theme, per-signal views                                                        |
+| `internal/ui`            | Theme, keymaps, `uitest` headless driver, per-signal views (`ui/views/logsview`)                           |
 
 Adding a signal = domain type in `obs/<signal>`, mapping in `api/`, `remote` searcher, view in `ui/views/<signal>`, register it in `app`.
+
+UI conventions:
+
+- Views implement `app.SignalView`; the root forwards key presses to the active view only, other messages (async results, ticks, `app.ResizeMsg`) to every view.
+- Async results carry the search ID / live generation they belong to; stale ones are dropped.
+- Report errors and warnings with `app.Notify` (status bar), never by printing.
+- UI tests drive the root model with `internal/ui/uitest` (send keys, run commands, read the plain-text screen). Set `LAZYOBS_SCREENS=1` to print screens in `internal/app` tests. Inject `Options.Now` and `Options.After` to control time and live polling.
+- `lazyobs --demo` runs on `source/fake`: use it to try UI changes without an account.
 
 ## API facts (verified against the live API, not all in the spec)
 

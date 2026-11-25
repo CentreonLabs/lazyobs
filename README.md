@@ -7,13 +7,16 @@ observability data without leaving the terminal.
 > **Status:** early development. Logs are the first supported signal; traces and
 > metrics will follow.
 
-## Features (MVP, in progress)
+## Features
 
-- Search logs with the Quickwit query syntax over a chosen time range
-- Paginated list with a detail panel
+- Search logs with the Quickwit query syntax over a relative or absolute time range
+- Volume histogram of the matching logs
+- Endless list (past the API's 10 000 offset limit) with a detail panel: attributes,
+  resource, trace IDs and raw JSON
 - Live mode (like `tail -f`) with pause/resume
 - Keyboard-driven navigation with vim/lazygit-style shortcuts and a help screen (`?`)
 - Several profiles (contexts), like `kubectl`
+- A `--demo` mode with synthetic data, no account needed
 
 ## Installation
 
@@ -22,6 +25,33 @@ go install github.com/CentreonLabs/lazyobs/cmd/lazyobs@latest
 ```
 
 Homebrew packaging will come later.
+
+## Usage
+
+```sh
+lazyobs                                          # current context, last 15 minutes
+lazyobs --range 24h --query 'severity_text:ERROR'
+lazyobs --range '2026-11-03 13:00 .. 2026-11-03 14:00'
+lazyobs --context staging
+lazyobs --demo                                   # try it without an account
+```
+
+| Keys                         | Action                                     |
+| ---------------------------- | ------------------------------------------ |
+| `j`/`k`, `g`/`G`, `ctrl+d/u` | Move in the list (or the focused panel)    |
+| `/`                          | Edit the query                             |
+| `t`                          | Time range (`tab` cycles presets)          |
+| `enter` / `esc`              | Open / close the detail panel              |
+| `tab`                        | Switch focus between list and detail       |
+| `L` / `space`                | Live mode on/off / pause and resume it     |
+| `r`                          | Refresh                                    |
+| `y`                          | Copy the selected log as JSON              |
+| `z`                          | Toggle local time / UTC                    |
+| `1` `2` `3`                  | Switch signal (logs; traces, metrics soon) |
+| `?`                          | Help                                       |
+| `q`                          | Quit                                       |
+
+Live mode polls every 10 seconds and re-queries the last minute to catch logs indexed late.
 
 ## Configuration
 

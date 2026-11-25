@@ -3,7 +3,6 @@ package cli
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 
@@ -12,9 +11,6 @@ import (
 	"github.com/CentreonLabs/lazyobs/internal/config"
 	"github.com/CentreonLabs/lazyobs/internal/version"
 )
-
-// errTUINotReady is returned until the interface lands.
-var errTUINotReady = errors.New("the interface is not implemented yet; see `lazyobs config --help`")
 
 type app struct {
 	env       config.Env
@@ -25,6 +21,7 @@ type app struct {
 // NewRootCommand builds the lazyobs command tree.
 func NewRootCommand(env config.Env, stdout, stderr io.Writer) *cobra.Command {
 	a := &app{env: env, out: stdout, err: stderr}
+	var tui tuiOptions
 
 	root := &cobra.Command{
 		Use:   "lazyobs",
@@ -39,12 +36,11 @@ context of the configuration file.`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Args:          cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			if _, err := a.resolve(cmd.Context()); err != nil {
-				return err
-			}
-			return errTUINotReady
-		},
+		Example: `  lazyobs                                   # current context, last 15 minutes
+  lazyobs --range 24h --query 'severity_text:ERROR'
+  lazyobs --context staging
+  lazyobs --demo                            # synthetic data, no account needed`,
+		RunE: func(cmd *cobra.Command, _ []string) error { return a.runTUI(cmd.Context(), tui) },
 	}
 	root.SetOut(stdout)
 	root.SetErr(stderr)
@@ -55,6 +51,10 @@ context of the configuration file.`,
 	f.StringVar(&a.overrides.Context, "context", "", "context to use (default $LAZYOBS_CONTEXT or current-context)")
 	f.StringVar(&a.overrides.Org, "org", "", "organization code (overrides the context)")
 	f.StringVar(&a.overrides.URL, "url", "", "API base URL (overrides the context)")
+
+	root.Flags().BoolVar(&tui.demo, "demo", false, "explore synthetic data without connecting to the platform")
+	root.Flags().StringVarP(&tui.query, "query", "q", "", "initial query (Quickwit syntax)")
+	root.Flags().StringVarP(&tui.rng, "range", "r", "", `initial time range: 15m, 24h, 7d or "2026-11-03 13:00 .. 2026-11-03 14:00"`)
 
 	root.AddCommand(newVersionCommand(a), newConfigCommand(a))
 	return root
