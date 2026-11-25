@@ -31,6 +31,10 @@ run: ## Run lazyobs (pass arguments with ARGS="...")
 test: ## Run unit tests with the race detector
 	go test -race -count=1 ./...
 
+.PHONY: integration
+integration: ## Run integration tests against the live API (needs LAZYOBS_TOKEN and LAZYOBS_ORG)
+	go test -tags integration -run Integration -count=1 -v ./...
+
 .PHONY: cover
 cover: ## Run tests and open the coverage report
 	go test -race -coverprofile=coverage.out ./...

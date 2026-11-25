@@ -1,0 +1,20 @@
+{
+  "hits": [],
+  "num_hits": 18750000,
+  "curves": [
+    {
+      "metric": "count by severity",
+      "times": [1793016000000, 1793019600000, 1793023200000],
+      "data": [10, 0, 25.5],
+      "attributes": [["severity_number", "13-17"]],
+      "unit": null
+    },
+    {
+      "metric": "count by severity",
+      "times": [1793016000000, 1793019600000, 1793023200000],
+      "data": [3, 1, 0],
+      "attributes": [["severity_number", "17-21"]],
+      "unit": null
+    }
+  ]
+}

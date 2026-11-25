@@ -14,6 +14,7 @@ Logs are the first signal; traces and metrics must plug in without refactoring.
 make build    # ./bin/lazyobs with version ldflags
 make test     # go test -race ./...
 make lint     # golangci-lint v2 via `go run` (pinned in Makefile)
+make integration  # live API tests, needs LAZYOBS_TOKEN + LAZYOBS_ORG
 make fmt      # gofumpt + goimports through golangci-lint
 make cross    # build all OS/arch into ./dist
 ```

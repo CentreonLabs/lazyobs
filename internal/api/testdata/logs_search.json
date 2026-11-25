@@ -1,0 +1,43 @@
+{
+  "num_hits": 1983,
+  "elapsed_time_micros": 23350,
+  "errors": [],
+  "hits": [
+    {
+      "body": { "message": "connection pool exhausted, retrying" },
+      "observed_timestamp_nanos": 1793713557606075335,
+      "resource_attributes": { "service.version": "0.1.0" },
+      "scope_name": "k6",
+      "scope_version": "0.1.0",
+      "service_name": "query",
+      "severity_number": 13,
+      "severity_text": "WARN",
+      "timestamp_nanos": 1793713556297395112,
+      "trace_flags": 0
+    },
+    {
+      "body": { "message": "request served" },
+      "observed_timestamp_nanos": 1793713557606075400,
+      "resource_attributes": { "service.version": "0.1.0" },
+      "scope_name": "k6",
+      "scope_version": "0.1.0",
+      "service_name": "ingest",
+      "severity_number": 9,
+      "severity_text": "INFO",
+      "timestamp_nanos": 1793713556297666931,
+      "trace_flags": 0
+    },
+    {
+      "body": "plain string body",
+      "attributes": { "http.method": "GET", "http.status_code": 500 },
+      "resource_attributes": { "service.version": "2.3.1", "host.name": "web-01" },
+      "service_name": "web",
+      "severity_number": 0,
+      "severity_text": "error",
+      "timestamp_nanos": 1793713556297992331,
+      "trace_id": "5b8efff798038103d269b633813fc60c",
+      "span_id": "eee19b7ec3c1b174",
+      "trace_flags": 1
+    }
+  ]
+}
