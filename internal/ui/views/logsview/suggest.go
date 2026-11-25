@@ -25,9 +25,13 @@ const (
 
 // completion is the state of the query autocompletion.
 type completion struct {
-	tok       token
-	items     []suggestion
+	tok   token
+	items []suggestion
+	// selected is the highlighted suggestion, -1 for none: nothing is
+	// preselected when the typed word is already a known field or value, so
+	// that enter runs the query instead of replacing what was typed.
 	selected  int
+	exact     bool
 	dismissed bool // closed with esc until the token changes
 
 	fields        []obs.Field
@@ -98,15 +102,26 @@ func (m *Model) refreshCompletion() tea.Cmd {
 		return nil
 	}
 	tok := tokenAt([]rune(m.input.Value()), m.input.Position())
-	if tok.kind != m.compl.tok.kind || tok.start != m.compl.tok.start || tok.field != m.compl.tok.field || tok.prefix != m.compl.tok.prefix {
-		m.compl.dismissed, m.compl.selected = false, 0
+	changed := tok.kind != m.compl.tok.kind || tok.start != m.compl.tok.start || tok.field != m.compl.tok.field || tok.prefix != m.compl.tok.prefix
+	if changed {
+		m.compl.dismissed = false
 	}
 	m.compl.tok = tok
 	m.compl.items = nil
+	defer func() {
+		if changed || m.compl.selected >= len(m.compl.items) {
+			m.compl.selected = 0
+			if m.compl.exact {
+				m.compl.selected = -1
+			}
+		}
+	}()
+	m.compl.exact = false
 
 	switch tok.kind {
 	case tokenField:
 		m.compl.items = fieldSuggestions(m.compl.fields, tok.prefix)
+		_, m.compl.exact = m.field(tok.prefix)
 	case tokenValue:
 		if f, ok := m.field(tok.field); ok && !f.Aggregatable {
 			return nil // the platform cannot list values of this field
@@ -114,6 +129,9 @@ func (m *Model) refreshCompletion() tea.Cmd {
 		k := valuesKey(tok.field, tok.prefix)
 		if values, ok := m.compl.values[k]; ok {
 			m.compl.items = valueSuggestions(values, tok.prefix)
+			for _, v := range values {
+				m.compl.exact = m.compl.exact || v.Value == tok.prefix
+			}
 			return nil
 		}
 		if k == m.compl.pending {
@@ -123,7 +141,6 @@ func (m *Model) refreshCompletion() tea.Cmd {
 		m.compl.pending = k
 		return m.opts.After(suggestDelay, suggestTickMsg{owner: owner{m.id}, seq: m.compl.seq, field: tok.field, prefix: tok.prefix})
 	}
-	m.compl.selected = min(m.compl.selected, max(len(m.compl.items)-1, 0))
 	return nil
 }
 
@@ -171,14 +188,16 @@ func (m *Model) completionKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 	if m.mode != modeQuery || !m.compl.open() {
 		return nil, false
 	}
-	k := m.keys
+	k, n := m.keys, len(m.compl.items)
 	switch {
 	case key.Matches(msg, k.SuggestNext):
-		m.compl.selected = (m.compl.selected + 1) % len(m.compl.items)
+		m.compl.selected = (m.compl.selected + 1) % n
 	case key.Matches(msg, k.SuggestPrev):
-		m.compl.selected = (m.compl.selected - 1 + len(m.compl.items)) % len(m.compl.items)
-	case key.Matches(msg, k.Accept):
-		value, cursor := complete([]rune(m.input.Value()), m.compl.tok, m.compl.items[m.compl.selected])
+		m.compl.selected = (max(m.compl.selected, 0) - 1 + n) % n
+	case key.Matches(msg, k.Accept), key.Matches(msg, k.Submit) && m.compl.selected >= 0:
+		// tab inserts the highlighted (or first) suggestion; enter only a
+		// highlighted one, otherwise it runs the query.
+		value, cursor := complete([]rune(m.input.Value()), m.compl.tok, m.compl.items[max(m.compl.selected, 0)])
 		m.input.SetValue(value)
 		m.input.SetCursor(cursor)
 		return m.refreshCompletion(), true

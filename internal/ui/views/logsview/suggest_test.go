@@ -26,7 +26,7 @@ func TestAutocompleteFieldThenValue(t *testing.T) {
 	if !h.view.compl.open() || !strings.Contains(s, "service_name") || !strings.Contains(s, "keyword") {
 		t.Fatalf("field suggestions missing:\n%s", s)
 	}
-	if !strings.Contains(s[strings.LastIndex(s, "\n")+1:], "tab complete") {
+	if !strings.Contains(s[strings.LastIndex(s, "\n")+1:], "enter complete") {
 		t.Errorf("status bar must explain the list: %q", s[strings.LastIndex(s, "\n")+1:])
 	}
 
@@ -123,5 +123,51 @@ func TestStaleValueResponsesAreIgnored(t *testing.T) {
 	h.d.Send(first)
 	if h.view.compl.open() {
 		t.Error("an outdated request must not fire")
+	}
+}
+
+func TestEnterAcceptsTheHighlightedSuggestion(t *testing.T) {
+	h := newHarness(t, Options{})
+	h.d.Keys("/")
+	h.d.Type("serv")
+	h.d.Keys("enter") // completes the field, does not search
+	if h.view.mode != modeQuery || h.view.input.Value() != "service_name:" {
+		t.Fatalf("enter must complete the field: mode %v, input %q", h.view.mode, h.view.input.Value())
+	}
+	h.fireSuggestTick(t)
+	first := h.view.compl.items[0].label
+	h.d.Keys("enter") // completes the value
+	if got := h.view.input.Value(); got != "service_name:"+first+" " || h.view.mode != modeQuery {
+		t.Fatalf("enter must complete the value: %q", got)
+	}
+	h.d.Keys("enter") // the list is closed: search
+	if h.view.mode != modeNormal || h.view.query != "service_name:"+first {
+		t.Fatalf("third enter must search: mode %v, query %q", h.view.mode, h.view.query)
+	}
+}
+
+func TestExactValueIsNotReplacedByEnter(t *testing.T) {
+	h := newHarness(t, Options{})
+	h.d.Keys("/")
+	h.d.Type("attributes.http.method:P")
+	h.fireSuggestTick(t) // POST, PUT
+	h.d.Type("UT")       // "PUT" is typed in full and known
+	h.fireSuggestTick(t)
+	if h.view.compl.selected != -1 {
+		t.Fatalf("nothing must be preselected on an exact value, selected %d (%v)", h.view.compl.selected, labels(h.view.compl.items))
+	}
+	h.d.Keys("enter")
+	if h.view.mode != modeNormal || h.view.query != "attributes.http.method:PUT" {
+		t.Fatalf("enter must search what was typed: %q", h.view.query)
+	}
+}
+
+func TestExactFieldWithLongerMatches(t *testing.T) {
+	h := newHarness(t, Options{})
+	h.d.Keys("/")
+	h.d.Type("scope_name") // a known field; nothing longer here, so no list
+	h.d.Keys("enter")
+	if h.view.mode != modeNormal {
+		t.Fatal("enter must search when nothing is highlighted")
 	}
 }

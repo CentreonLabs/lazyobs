@@ -175,8 +175,11 @@ func (m *Model) ShortHelp() []key.Binding {
 	k := m.keys
 	switch m.mode {
 	case modeQuery:
-		if m.compl.open() {
-			return []key.Binding{k.Accept, short(k.SuggestNext, "choose"), short(k.Submit, "search"), short(k.Cancel, "close list")}
+		switch {
+		case m.compl.open() && m.compl.selected >= 0:
+			return []key.Binding{short(k.Submit, "complete"), short(k.SuggestNext, "choose"), short(k.Cancel, "close list")}
+		case m.compl.open():
+			return []key.Binding{short(k.Submit, "search"), short(k.SuggestNext, "choose"), k.Accept, short(k.Cancel, "close list")}
 		}
 		return []key.Binding{short(k.Submit, "search"), k.Cancel}
 	case modeRange:
