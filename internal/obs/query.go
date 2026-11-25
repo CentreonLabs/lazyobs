@@ -85,4 +85,6 @@ type Page[T any] struct {
 	Items []T
 	Total int64   // number of items matching the query over the queried window
 	Next  *Cursor // nil when there is nothing more to fetch
+	// Warnings are non-fatal issues (partial results, truncation) to surface to the user.
+	Warnings []string
 }
