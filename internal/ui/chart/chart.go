@@ -19,10 +19,11 @@ import (
 
 // Styles are the colors of the non-data elements.
 type Styles struct {
-	Axis   lipgloss.Style // tick labels
-	Grid   lipgloss.Style // grid lines
-	Marker lipgloss.Style // the vertical marker line
-	Legend lipgloss.Style // legend text
+	Axis      lipgloss.Style // tick labels
+	Grid      lipgloss.Style // grid lines
+	Marker    lipgloss.Style // the vertical marker line
+	Legend    lipgloss.Style // legend text
+	Selection color.Color    // background of the selected time span
 }
 
 // Options describe a chart.
@@ -40,7 +41,23 @@ type Options struct {
 	Hidden map[string]bool
 	// LegendHint is appended to the legend, dimmed.
 	LegendHint string
-	Styles     Styles
+	// SelectFrom and SelectTo, when set, highlight a time span (e.g. while
+	// the user drags to zoom).
+	SelectFrom, SelectTo time.Time
+	Styles               Styles
+}
+
+// Layout tells where the parts of a rendered chart are, relative to its
+// top-left cell, so that mouse events can be mapped back to series and times.
+type Layout struct {
+	Legend Legend
+	// The plot area spans columns [PlotX, PlotX+PlotW) and rows [0, PlotH).
+	PlotX, PlotW, PlotH int
+}
+
+// TimeAt returns the time at the left edge of plot column col.
+func (l Layout) TimeAt(col int, from, to time.Time) time.Time {
+	return from.Add(time.Duration(float64(to.Sub(from)) * float64(col) / float64(max(l.PlotW, 1))))
 }
 
 // Legend locates the legend entries in the rendered chart, so that clicks
@@ -74,16 +91,16 @@ const (
 	minPlotH   = 2
 )
 
-// Render draws the chart, always exactly Height lines, and tells where the
-// legend entries are.
-func Render(o Options) (string, Legend) {
+// Render draws the chart, always exactly Height lines, and tells where its
+// parts are.
+func Render(o Options) (string, Layout) {
 	if o.Location == nil {
 		o.Location = time.Local
 	}
 	span := o.To.Sub(o.From)
 	plotH := o.Height - xAxisLines - legendRows
 	if span <= 0 || plotH < minPlotH {
-		return pad("", o.Width, o.Height), Legend{Row: -1}
+		return pad("", o.Width, o.Height), Layout{Legend: Legend{Row: -1}}
 	}
 	visible := make([]obs.Series, 0, len(o.Series))
 	for _, s := range o.Series {
@@ -114,10 +131,22 @@ func Render(o Options) (string, Legend) {
 	gutter++ // space between labels and plot
 	plotW := o.Width - gutter
 	if plotW < minPlotW {
-		return pad("", o.Width, o.Height), Legend{Row: -1}
+		return pad("", o.Width, o.Height), Layout{Legend: Legend{Row: -1}}
 	}
 
 	c := newCanvas(plotW, plotH)
+	if !o.SelectFrom.IsZero() && !o.SelectTo.IsZero() {
+		a, b := o.SelectFrom, o.SelectTo
+		if b.Before(a) {
+			a, b = b, a
+		}
+		first := max(columnOf(a, o.From, o.To, plotW), 0)
+		last := columnOf(b, o.From, o.To, plotW)
+		if last < 0 {
+			last = plotW - 1
+		}
+		c.selFrom, c.selTo = first, last
+	}
 
 	// Grid: horizontal lines at Y ticks, vertical lines at X ticks.
 	tickRow := make(map[int]string, len(ticks))
@@ -164,7 +193,8 @@ func Render(o Options) (string, Legend) {
 	lines = append(lines, strings.Repeat(" ", gutter)+o.Styles.Axis.Render(xAxis(xticks, o.From, o.To, plotW)))
 	text, items := legend(o, step)
 	lines = append(lines, text)
-	return pad(strings.Join(lines, "\n"), o.Width, o.Height), Legend{Row: len(lines) - 1, Items: items}
+	layout := Layout{Legend: Legend{Row: len(lines) - 1, Items: items}, PlotX: gutter, PlotW: plotW, PlotH: plotH}
+	return pad(strings.Join(lines, "\n"), o.Width, o.Height), layout
 }
 
 // samples places the points on the dot grid: each point at the center of its

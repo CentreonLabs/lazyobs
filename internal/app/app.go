@@ -35,8 +35,9 @@ type SignalView interface {
 	Status() string
 }
 
-// Views also receive tea.MouseClickMsg and tea.MouseWheelMsg, with
-// coordinates relative to their body (0,0 is the top-left cell of the body).
+// Views also receive tea.MouseClickMsg, tea.MouseWheelMsg, tea.MouseMotionMsg
+// (while a button is held) and tea.MouseReleaseMsg, with coordinates relative
+// to their body (0,0 is the top-left cell of the body).
 
 // Tab is an entry of the header. A nil View marks a signal not available yet.
 type Tab struct {
@@ -149,6 +150,21 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.MouseWheelMsg:
 		if mouse, ok := m.bodyMouse(msg.Mouse()); ok {
 			return m, m.updateActive(tea.MouseWheelMsg(mouse))
+		}
+		return m, nil
+
+	// Drags may end anywhere, even outside the body: always forward them.
+	case tea.MouseMotionMsg:
+		if mouse := msg.Mouse(); !m.showHelp {
+			mouse.Y--
+			return m, m.updateActive(tea.MouseMotionMsg(mouse))
+		}
+		return m, nil
+
+	case tea.MouseReleaseMsg:
+		if mouse := msg.Mouse(); !m.showHelp {
+			mouse.Y--
+			return m, m.updateActive(tea.MouseReleaseMsg(mouse))
 		}
 		return m, nil
 

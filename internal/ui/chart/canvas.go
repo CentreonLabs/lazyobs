@@ -32,10 +32,12 @@ type cell struct {
 type canvas struct {
 	w, h  int // in cells
 	cells [][]cell
+	// selFrom..selTo (inclusive) are highlighted columns; selFrom < 0 when none.
+	selFrom, selTo int
 }
 
 func newCanvas(w, h int) *canvas {
-	c := &canvas{w: w, h: h, cells: make([][]cell, h)}
+	c := &canvas{w: w, h: h, cells: make([][]cell, h), selFrom: -1, selTo: -1}
 	for i := range c.cells {
 		c.cells[i] = make([]cell, w)
 	}
@@ -133,20 +135,27 @@ func (c *canvas) dot(x, y, series int) {
 
 // renderRow renders a row, grouping cells of the same style.
 func (c *canvas) renderRow(row int, series []lipgloss.Style, st Styles) string {
+	type runKey struct {
+		style    *lipgloss.Style
+		selected bool
+	}
 	var out, run strings.Builder
-	var runStyle *lipgloss.Style
+	var cur runKey
 	flush := func() {
 		if run.Len() == 0 {
 			return
 		}
-		if runStyle == nil {
-			out.WriteString(run.String())
-		} else {
-			out.WriteString(runStyle.Render(run.String()))
+		style := lipgloss.NewStyle()
+		if cur.style != nil {
+			style = *cur.style
 		}
+		if cur.selected && st.Selection != nil {
+			style = style.Background(st.Selection)
+		}
+		out.WriteString(style.Render(run.String()))
 		run.Reset()
 	}
-	for _, cl := range c.cells[row] {
+	for x, cl := range c.cells[row] {
 		var ch rune
 		var style *lipgloss.Style
 		switch cl.kind {
@@ -163,9 +172,10 @@ func (c *canvas) renderRow(row int, series []lipgloss.Style, st Styles) string {
 		case cellData:
 			ch, style = brailleBase+cl.dots, &series[cl.series]
 		}
-		if style != runStyle {
+		key := runKey{style: style, selected: c.selFrom >= 0 && x >= c.selFrom && x <= c.selTo}
+		if key != cur {
 			flush()
-			runStyle = style
+			cur = key
 		}
 		run.WriteRune(ch)
 	}

@@ -73,10 +73,11 @@ func New(dark bool) *Theme {
 
 	t.PanelTitle = lipgloss.NewStyle().Bold(true).Foreground(fg)
 	t.Chart = chart.Styles{
-		Axis:   lipgloss.NewStyle().Foreground(t.Muted),
-		Grid:   lipgloss.NewStyle().Foreground(t.Subtle),
-		Marker: lipgloss.NewStyle().Foreground(t.Accent),
-		Legend: lipgloss.NewStyle().Foreground(fg),
+		Axis:      lipgloss.NewStyle().Foreground(t.Muted),
+		Grid:      lipgloss.NewStyle().Foreground(t.Subtle),
+		Marker:    lipgloss.NewStyle().Foreground(t.Accent),
+		Legend:    lipgloss.NewStyle().Foreground(fg),
+		Selection: selBg,
 	}
 
 	// Grafana-like palette: green info, yellow warnings, red errors.

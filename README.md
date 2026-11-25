@@ -10,6 +10,9 @@ observability data without leaving the terminal.
 ## Features
 
 - Search logs with the Quickwit query syntax over a relative or absolute time range
+- Ask in plain words ("errors from checkout in the last hour"), translated to a query by the
+  platform
+- Zoom on a time span by dragging on the chart
 - Split screen: a Grafana-style chart of the log rate per severity on top (braille lines, grid,
   round axes, legend, selected log marked), the log list below
 - Endless list (past the API's 10 000 offset limit) with a detail panel: attributes,
@@ -37,24 +40,29 @@ lazyobs --context staging
 lazyobs --demo                                   # try it without an account
 ```
 
-| Keys                         | Action                                     |
-| ---------------------------- | ------------------------------------------ |
-| `j`/`k`, `g`/`G`, `ctrl+d/u` | Move in the list (or the focused panel)    |
-| `/`                          | Edit the query                             |
-| `t`                          | Time range (`tab` cycles presets)          |
-| `enter` / `esc`              | Open / close the detail panel              |
-| `tab`                        | Switch focus between list and detail       |
-| `L` / `space`                | Live mode on/off / pause and resume it     |
-| `r`                          | Refresh                                    |
-| `y`                          | Copy the selected log as JSON              |
-| `z`                          | Toggle local time / UTC                    |
-| `v`                          | Split timeline / compact sparkline         |
-| click a level in the legend  | Show / hide that level in the timeline     |
-| right-click a level          | Show only that level (again: show all)     |
-| click a row, wheel           | Select a log, scroll                       |
-| `1` `2` `3`                  | Switch signal (logs; traces, metrics soon) |
-| `?`                          | Help                                       |
-| `q`                          | Quit                                       |
+| Keys                         | Action                                      |
+| ---------------------------- | ------------------------------------------- |
+| `j`/`k`, `g`/`G`, `ctrl+d/u` | Move in the list (or the focused panel)     |
+| `/`                          | Edit the query                              |
+| `a`                          | Ask in plain words (natural-language query) |
+| `t`                          | Time range (`tab` cycles presets)           |
+| drag on the chart / `-`      | Zoom in on a time span / zoom out           |
+| `enter` / `esc`              | Open / close the detail panel               |
+| `tab`                        | Switch focus between list and detail        |
+| `L` / `space`                | Live mode on/off / pause and resume it      |
+| `r`                          | Refresh                                     |
+| `y`                          | Copy the selected log as JSON               |
+| `z`                          | Toggle local time / UTC                     |
+| `v`                          | Split timeline / compact sparkline          |
+| click a level in the legend  | Show / hide that level in the timeline      |
+| right-click a level          | Show only that level (again: show all)      |
+| click a row, wheel           | Select a log, scroll                        |
+| `1` `2` `3`                  | Switch signal (logs; traces, metrics soon)  |
+| `?`                          | Help                                        |
+| `q`                          | Quit                                        |
+
+Natural-language queries use the platform's translation service, which requires the Editor role.
+The time span mentioned in the question, if any, replaces the current range.
 
 Live mode polls every 10 seconds and re-queries the last minute to catch logs indexed late.
 

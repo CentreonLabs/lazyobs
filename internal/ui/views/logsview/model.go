@@ -32,12 +32,13 @@ var rangePresets = []string{"5m", "15m", "1h", "6h", "24h", "7d", "30d"}
 
 // Options configures the view.
 type Options struct {
-	Source    obs.Searcher[logs.Record]
-	Histogram obs.Histogrammer // optional
-	Theme     *theme.Theme
-	Query     string
-	Range     obs.TimeRange // DefaultRange when zero
-	PageSize  int
+	Source     obs.Searcher[logs.Record]
+	Histogram  obs.Histogrammer    // optional
+	Translator obs.QueryTranslator // optional, enables natural-language queries
+	Theme      *theme.Theme
+	Query      string
+	Range      obs.TimeRange // DefaultRange when zero
+	PageSize   int
 	// LiveInterval is the polling period of live mode (engine default when zero).
 	LiveInterval time.Duration
 	// Now is the clock (time.Now when nil).
@@ -60,6 +61,7 @@ const (
 	modeNormal inputMode = iota
 	modeQuery
 	modeRange
+	modeAsk
 )
 
 // Model is the logs view.
@@ -108,6 +110,16 @@ type Model struct {
 
 	// Clickable areas, in body coordinates, recorded by the last View.
 	hits hitAreas
+
+	// Zoom: the span being dragged on the timeline, and the ranges to go
+	// back to when zooming out.
+	drag      *dragSpan
+	zoomStack []obs.TimeRange
+
+	// Natural-language queries.
+	lastPrompt  string
+	translating bool
+	askID       int
 }
 
 var _ app.SignalView = (*Model)(nil)
@@ -171,8 +183,14 @@ type (
 		series   []obs.Series
 		err      error
 	}
-	tailTickMsg struct{ gen int }
-	tailMsg     struct {
+	tailTickMsg  struct{ gen int }
+	translateMsg struct {
+		id     int
+		prompt string
+		result obs.Translation
+		err    error
+	}
+	tailMsg struct {
 		gen    int
 		update engine.TailUpdate[logs.Record]
 		err    error
@@ -207,6 +225,13 @@ func (m *Model) Update(msg tea.Msg) (app.SignalView, tea.Cmd) {
 		return m, m.poll()
 	case tailMsg:
 		return m, m.onTail(msg)
+	case translateMsg:
+		return m, m.onTranslate(msg)
+	case tea.MouseMotionMsg:
+		m.onDragMove(msg.Mouse())
+		return m, nil
+	case tea.MouseReleaseMsg:
+		return m, m.onDragEnd(msg.Mouse())
 	case tea.MouseClickMsg:
 		return m, m.onClick(msg.Mouse())
 	case tea.MouseWheelMsg:
@@ -312,6 +337,8 @@ func (m *Model) Status() string {
 		return m.th.Badge.Background(m.th.Error).Render("LIVE ✗")
 	case m.tail != nil:
 		return m.th.Badge.Background(m.th.Success).Render("LIVE ●")
+	case m.translating:
+		return m.th.Dim.Render("translating…")
 	case m.loading:
 		return m.th.Dim.Render("loading…")
 	}

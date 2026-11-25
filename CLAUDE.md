@@ -60,6 +60,7 @@ UI conventions:
 - `/logs/fields/capabilities` and `/logs/fields/{field}/terms` work (autocomplete, facets).
 - Errors: `{"message": "..."}` with 400/401/402/403/413/422. No rate-limit headers observed.
 - No streaming endpoint: live mode polls every **10 s** with an overlap window and dedups on a fingerprint.
+- `POST /log-analysis/nlquery/translate` (**Editor** role) takes `{prompt, available_services?}` and returns `{query, time_range, warning}`; `time_range` is a look-back in **milliseconds**, `{start, end}` in epoch ms, or null. We ground it with the top `service_name` terms of the last 7 days.
 - Traces (`/traces/search`, `/traces/{id}`) are beta, enabled per org (404 otherwise).
 
 ## Conventions

@@ -41,13 +41,14 @@ func (a *app) runTUI(ctx context.Context, opts tuiOptions) error {
 	}
 
 	var (
-		src   logSource
-		label string
+		src        logSource
+		translator obs.QueryTranslator
+		label      string
 	)
 	if opts.demo {
 		f := fake.NewLogs(uint64(time.Now().UnixNano()), nil) //nolint:gosec // seed only
 		f.Latency = 150 * time.Millisecond
-		src, label = f, "demo data"
+		src, translator, label = f, fake.Translator{}, "demo data"
 	} else {
 		r, err := a.resolve(ctx)
 		if err != nil {
@@ -58,6 +59,7 @@ func (a *app) runTUI(ctx context.Context, opts tuiOptions) error {
 			return err
 		}
 		src = remote.NewLogs(client, nil)
+		translator = remote.NewTranslator(client, nil)
 		label = r.Org
 		if r.Context != "" {
 			label = fmt.Sprintf("%s · %s", r.Context, r.Org)
@@ -65,7 +67,10 @@ func (a *app) runTUI(ctx context.Context, opts tuiOptions) error {
 	}
 
 	th := theme.New(true) // refined once the terminal reports its background
-	logsView := logsview.New(logsview.Options{Source: src, Histogram: src, Theme: th, Query: opts.query, Range: rng})
+	logsView := logsview.New(logsview.Options{
+		Source: src, Histogram: src, Translator: translator,
+		Theme: th, Query: opts.query, Range: rng,
+	})
 	root := tui.New(label, th,
 		tui.Tab{Title: "Logs", View: logsView},
 		tui.Tab{Title: "Traces"},

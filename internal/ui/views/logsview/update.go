@@ -18,6 +18,10 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 	switch {
 	case key.Matches(msg, k.Query):
 		return m.openInput(modeQuery, m.query, "service_name:api AND severity_text:ERROR")
+	case key.Matches(msg, k.Ask):
+		return m.openAsk()
+	case key.Matches(msg, k.ZoomOut):
+		return m.zoomOut()
 	case key.Matches(msg, k.Range):
 		m.presetIdx = -1
 		return m.openInput(modeRange, rangeInputValue(m.rng, m.location()), "15m, 2h, 7d or 2026-11-03 13:00 .. 2026-11-03 14:00")
@@ -161,6 +165,12 @@ func (m *Model) updateInput(msg tea.KeyPressMsg) tea.Cmd {
 func (m *Model) submitInput() tea.Cmd {
 	value := strings.TrimSpace(m.input.Value())
 	switch m.mode {
+	case modeAsk:
+		m.closeInput()
+		if value == "" {
+			return nil
+		}
+		return m.translate(value)
 	case modeQuery:
 		m.query = value
 	case modeRange:

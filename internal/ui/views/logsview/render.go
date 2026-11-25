@@ -69,6 +69,8 @@ func (m *Model) renderBar() string {
 		left = t.Key.Render("query › ") + m.input.View()
 	case modeRange:
 		left = t.Key.Render("range › ") + m.input.View() + t.Dim.Render("  tab: "+strings.Join(rangePresets, " "))
+	case modeAsk:
+		left = t.Key.Render("ask › ") + m.input.View()
 	default:
 		q := m.query
 		if strings.TrimSpace(q) == "" {

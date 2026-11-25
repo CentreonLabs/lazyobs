@@ -58,7 +58,12 @@ func (m *Model) renderTimeline(width, height, originX, originY int) string {
 	if len(m.records) > 0 {
 		marker = m.records[m.cursor].Timestamp
 	}
-	out, legend := chart.Render(chart.Options{
+	var selFrom, selTo time.Time
+	if d := m.drag; d != nil && m.hits.plotW > 0 {
+		selFrom = m.hits.timeAt(d.from, m.histFrom, m.histTo)
+		selTo = m.hits.timeAt(d.to+1, m.histFrom, m.histTo)
+	}
+	out, layout := chart.Render(chart.Options{
 		Width:      width,
 		Height:     height,
 		From:       m.histFrom,
@@ -69,10 +74,15 @@ func (m *Model) renderTimeline(width, height, originX, originY int) string {
 		Marker:     marker,
 		Hidden:     m.hidden,
 		LegendHint: legendHint,
+		SelectFrom: selFrom,
+		SelectTo:   selTo,
 		Styles:     m.th.Chart,
 	})
-	if legend.Row >= 0 {
-		m.hits.legend, m.hits.legendX, m.hits.legendY = legend, originX, originY+legend.Row
+	if layout.Legend.Row >= 0 {
+		m.hits.legend, m.hits.legendX, m.hits.legendY = layout.Legend, originX, originY+layout.Legend.Row
+		m.hits.chart = layout
+		m.hits.plotX, m.hits.plotY = originX+layout.PlotX, originY
+		m.hits.plotW, m.hits.plotH = layout.PlotW, layout.PlotH
 	}
 	return out
 }

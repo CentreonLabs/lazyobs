@@ -9,6 +9,8 @@ import (
 type keyMap struct {
 	keys.List
 	Query   key.Binding
+	Ask     key.Binding
+	ZoomOut key.Binding
 	Range   key.Binding
 	Refresh key.Binding
 	Detail  key.Binding
@@ -21,6 +23,7 @@ type keyMap struct {
 	Layout  key.Binding
 
 	// Mouse actions, listed in the help only (their keys never match a key press).
+	MouseZoom   key.Binding
 	MouseToggle key.Binding
 	MouseSolo   key.Binding
 	MouseSelect key.Binding
@@ -36,6 +39,8 @@ func defaultKeys() keyMap {
 	return keyMap{
 		List:    keys.DefaultList(),
 		Query:   key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "query")),
+		Ask:     key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "ask in plain words")),
+		ZoomOut: key.NewBinding(key.WithKeys("-"), key.WithHelp("-", "zoom out")),
 		Range:   key.NewBinding(key.WithKeys("t"), key.WithHelp("t", "time range")),
 		Refresh: key.NewBinding(key.WithKeys("r", "ctrl+r"), key.WithHelp("r", "refresh")),
 		Detail:  key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "details")),
@@ -47,6 +52,7 @@ func defaultKeys() keyMap {
 		UTC:     key.NewBinding(key.WithKeys("z"), key.WithHelp("z", "local/UTC time")),
 		Layout:  key.NewBinding(key.WithKeys("v"), key.WithHelp("v", "split/compact timeline")),
 
+		MouseZoom:   mouseHelp("drag on chart", "zoom in"),
 		MouseToggle: mouseHelp("click level", "show/hide it"),
 		MouseSolo:   mouseHelp("right-click level", "show only it"),
 		MouseSelect: mouseHelp("click row", "select log"),
@@ -62,8 +68,8 @@ func (k keyMap) help() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Query, k.Range, k.Detail, k.Live, k.Pause},
 		k.Bindings(),
-		{k.Refresh, k.Focus, k.Close, k.Copy, k.UTC, k.Layout},
-		{k.MouseToggle, k.MouseSolo, k.MouseSelect, k.MouseWheel},
+		{k.Ask, k.ZoomOut, k.Refresh, k.Focus, k.Close, k.Copy, k.UTC, k.Layout},
+		{k.MouseZoom, k.MouseToggle, k.MouseSolo, k.MouseSelect, k.MouseWheel},
 	}
 }
 

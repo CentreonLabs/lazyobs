@@ -2,6 +2,7 @@ package logsview
 
 import (
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -23,10 +24,29 @@ type hitAreas struct {
 	listRows     int
 	listRight    int // first column after the list panel
 	detailActive bool
+
+	chart        chart.Layout
+	plotX, plotY int // body position of the plot area
+	plotW, plotH int // 0 when no chart is shown
+}
+
+// inPlot reports whether a body position is over the chart's plot area.
+func (h hitAreas) inPlot(x, y int) bool {
+	return h.plotW > 0 && x >= h.plotX && x < h.plotX+h.plotW && y >= h.plotY && y < h.plotY+h.plotH
+}
+
+// timeAt maps a plot column to a time.
+func (h hitAreas) timeAt(col int, from, to time.Time) time.Time {
+	return h.chart.TimeAt(col, from, to)
 }
 
 func (m *Model) onClick(mouse tea.Mouse) tea.Cmd {
 	h := m.hits
+	if mouse.Button == tea.MouseLeft && h.inPlot(mouse.X, mouse.Y) && len(m.hist) > 0 {
+		col := mouse.X - h.plotX
+		m.drag = &dragSpan{anchor: col, from: col, to: col}
+		return nil
+	}
 	if mouse.Y == h.legendY {
 		if name, ok := h.legend.At(mouse.X - h.legendX); ok {
 			solo := mouse.Button == tea.MouseRight || mouse.Mod&(tea.ModShift|tea.ModAlt|tea.ModCtrl) != 0

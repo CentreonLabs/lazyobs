@@ -29,3 +29,17 @@ type Point struct {
 	Time  time.Time
 	Value float64
 }
+
+// Translation is a natural-language prompt turned into a query.
+type Translation struct {
+	Query string
+	// Range is the time hint found in the prompt, nil when there is none.
+	Range *TimeRange
+	// Warning names what the query could not express, if anything.
+	Warning string
+}
+
+// QueryTranslator turns natural language into the backend query language.
+type QueryTranslator interface {
+	Translate(ctx context.Context, prompt string) (Translation, error)
+}

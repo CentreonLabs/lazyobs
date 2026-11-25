@@ -162,7 +162,8 @@ func TestHiddenSeriesAndLegendPositions(t *testing.T) {
 		Color:  func(string) color.Color { return lipgloss.Color("#ff0000") },
 	}
 
-	out, legend := Render(opts)
+	out, layout := Render(opts)
+	legend := layout.Legend
 	lines := strings.Split(ansi.Strip(out), "\n")
 	if legend.Row != len(lines)-1 || len(legend.Items) != 2 {
 		t.Fatalf("legend = %+v", legend)
@@ -186,12 +187,36 @@ func TestHiddenSeriesAndLegendPositions(t *testing.T) {
 	// Hiding INFO rescales to ERROR (1/s) and dims its legend entry.
 	opts.Hidden = map[string]bool{"INFO": true}
 	opts.LegendHint = "click to toggle"
-	out, legend = Render(opts)
+	out, layout = Render(opts)
+	legend = layout.Legend
 	lines = strings.Split(ansi.Strip(out), "\n")
 	if !strings.HasPrefix(strings.TrimSpace(lines[0]), "1/s") {
 		t.Errorf("hidden series must not drive the scale: %q", lines[0])
 	}
 	if !strings.Contains(lines[legend.Row], "── INFO") || !strings.Contains(lines[legend.Row], "click to toggle") {
 		t.Errorf("legend = %q", lines[legend.Row])
+	}
+}
+
+func TestLayoutAndSelection(t *testing.T) {
+	to := from.Add(time.Hour)
+	opts := Options{
+		Width: 70, Height: 8, From: from, To: to, Location: time.UTC,
+		Series: []obs.Series{series("INFO", time.Minute, 1, 2, 3)},
+		Color:  func(string) color.Color { return lipgloss.Color("#00ff00") },
+		Styles: Styles{Selection: lipgloss.Color("#333333")},
+	}
+	plain, layout := Render(opts)
+	if layout.PlotX <= 0 || layout.PlotX+layout.PlotW != 70 || layout.PlotH != 6 {
+		t.Fatalf("layout = %+v", layout)
+	}
+	if got := layout.TimeAt(layout.PlotW/2, from, to); got.Sub(from.Add(30*time.Minute)).Abs() > time.Minute {
+		t.Errorf("TimeAt(middle) = %v", got)
+	}
+
+	opts.SelectFrom, opts.SelectTo = from.Add(40*time.Minute), from.Add(20*time.Minute) // reversed on purpose
+	selected, _ := Render(opts)
+	if selected == plain || ansi.Strip(selected) != ansi.Strip(plain) {
+		t.Error("a selection must only change the background")
 	}
 }
