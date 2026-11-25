@@ -130,7 +130,7 @@ or logs the token.
 ## Sessions
 
 lazyobs reopens where you left it: on exit, the tabs of the current context (query, time range,
-live mode, hidden levels, display preferences) are saved to `~/.local/state/lazyobs/state.json`
+live mode, hidden levels, detail panel, display preferences) are saved to `~/.local/state/lazyobs/state.json`
 (`$XDG_STATE_HOME`; `%LocalAppData%` on Windows) and restored on the next start. Relative ranges
 ("last 15m") follow the clock, absolute ones stay where they were. Each context, and the demo, has
 its own session.

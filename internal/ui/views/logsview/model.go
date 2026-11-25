@@ -239,8 +239,14 @@ func short(b key.Binding, desc string) key.Binding {
 // Capturing implements app.SignalView.
 func (m *Model) Capturing() bool { return m.mode != modeNormal }
 
-// Init implements app.SignalView.
-func (m *Model) Init() tea.Cmd { return m.search() }
+// Init implements app.SignalView. A restored detail panel also needs the
+// searchable fields to offer filters.
+func (m *Model) Init() tea.Cmd {
+	if m.showDetail {
+		return tea.Batch(m.search(), m.loadFields())
+	}
+	return m.search()
+}
 
 // nextViewID numbers view instances: several logs views (tabs) receive the
 // same broadcast messages and must only handle their own.

@@ -47,3 +47,29 @@ func TestRestoreAbsoluteRangeIsNotLive(t *testing.T) {
 		t.Fatalf("live %v, range %v", r.view.live, r.view.rng)
 	}
 }
+
+func TestDetailPanelIsRestored(t *testing.T) {
+	h := newHarness(t, Options{})
+	h.d.Keys("enter", "tab")
+	h.selectField(t, "service_name")
+	s := h.view.Snapshot()
+	if !s.Detail || s.DetailField != "service_name" {
+		t.Fatalf("snapshot = %+v", s)
+	}
+
+	r := newHarnessFrom(t, s)
+	if !r.view.showDetail || !strings.Contains(r.d.Screen(), "Details") {
+		t.Fatalf("detail panel not reopened:\n%s", r.d.Screen())
+	}
+	if len(r.view.detailEntries) == 0 || r.view.detailEntries[r.view.detailField].field != "service_name" {
+		t.Errorf("selected field not restored: %+v", r.view.detailEntries)
+	}
+	if r.view.compl.fields == nil {
+		t.Error("searchable fields must be loaded for the restored panel")
+	}
+
+	h.d.Keys("esc")
+	if h.view.Snapshot().Detail {
+		t.Error("a closed panel must be saved closed")
+	}
+}
