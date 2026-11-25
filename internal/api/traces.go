@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 	"time"
 )
 
@@ -135,4 +137,40 @@ func (c *Client) TraceFieldCapabilities(ctx context.Context, from, to time.Time)
 // TraceFieldTerms returns the most frequent values of a span field.
 func (c *Client) TraceFieldTerms(ctx context.Context, field, prefix string, from, to time.Time, maxTerms int) ([]Term, error) {
 	return c.fieldTerms(ctx, "traces", field, prefix, from, to, maxTerms)
+}
+
+// TopologyResponse is the service graph seen in the spans of a time window.
+type TopologyResponse struct {
+	Nodes []TopologyNode `json:"nodes"`
+	Edges []TopologyEdge `json:"edges"`
+}
+
+// TopologyNode is a service with its health. Latencies are milliseconds.
+type TopologyNode struct {
+	ServiceName string   `json:"serviceName"`
+	SpanCount   int64    `json:"spanCount"`
+	ErrorCount  int64    `json:"errorCount"`
+	P50         *float64 `json:"p50"`
+	P95         *float64 `json:"p95"`
+	P99         *float64 `json:"p99"`
+}
+
+// TopologyEdge is a service calling another one.
+type TopologyEdge struct {
+	Source    string `json:"source"`
+	Target    string `json:"target"`
+	CallCount int64  `json:"callCount"`
+}
+
+// TraceTopology returns the service graph over [start, end) in Unix seconds
+// (a negative start is relative to end).
+func (c *Client) TraceTopology(ctx context.Context, start, end int64) (*TopologyResponse, error) {
+	q := url.Values{}
+	q.Set("start", strconv.FormatInt(start, 10))
+	q.Set("end", strconv.FormatInt(end, 10))
+	var resp TopologyResponse
+	if err := c.do(ctx, http.MethodGet, c.orgURL("traces", "topology")+"?"+q.Encode(), nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
 }

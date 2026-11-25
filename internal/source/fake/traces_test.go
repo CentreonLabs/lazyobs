@@ -94,3 +94,20 @@ func TestFakeTraceFiltersAndHistogram(t *testing.T) {
 		t.Errorf("route values = %+v, %v", values, err)
 	}
 }
+
+func TestFakeTopology(t *testing.T) {
+	topo, err := fake.NewTraces(3, clock(now)).Topology(context.Background(), now.Add(-time.Hour), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gw, ok := topo.Service("demo-gateway")
+	if !ok || gw.Spans == 0 || gw.P95 < gw.P50 || len(topo.Services) < 5 {
+		t.Fatalf("services = %+v", topo.Services)
+	}
+	if callees := topo.Callees("demo-gateway"); len(callees) < 2 {
+		t.Errorf("gateway callees = %v", callees)
+	}
+	if callers := topo.Callers("demo-payments"); len(callers) != 1 || callers[0].From != "demo-orders" {
+		t.Errorf("payments callers = %v", callers)
+	}
+}

@@ -16,6 +16,7 @@ import (
 type TracesAPI interface {
 	SearchTraces(ctx context.Context, req api.TraceSearchRequest) (*api.TraceSearchResponse, error)
 	GetTrace(ctx context.Context, traceID string) (*api.TraceDetailResponse, error)
+	TraceTopology(ctx context.Context, start, end int64) (*api.TopologyResponse, error)
 }
 
 // ErrorQuery matches traces whose root span failed.
@@ -223,4 +224,34 @@ func andQuery(q, term string) string {
 		return fmt.Sprintf("(%s) AND %s", t, term)
 	}
 	return term
+}
+
+var _ traces.TopologyReader = (*Traces)(nil)
+
+// Topology implements traces.TopologyReader.
+func (t *Traces) Topology(ctx context.Context, from, to time.Time) (traces.Topology, error) {
+	end := to.Unix()
+	if to.Nanosecond() > 0 {
+		end++
+	}
+	resp, err := t.api.TraceTopology(ctx, from.Unix(), end)
+	if err != nil {
+		return traces.Topology{}, err
+	}
+	ms := func(v *float64) time.Duration {
+		if v == nil {
+			return 0
+		}
+		return time.Duration(*v * float64(time.Millisecond))
+	}
+	var topo traces.Topology
+	for _, n := range resp.Nodes {
+		topo.Services = append(topo.Services, traces.ServiceStats{
+			Name: n.ServiceName, Spans: n.SpanCount, Errors: n.ErrorCount, P50: ms(n.P50), P95: ms(n.P95), P99: ms(n.P99),
+		})
+	}
+	for _, e := range resp.Edges {
+		topo.Calls = append(topo.Calls, traces.Call{From: e.Source, To: e.Target, Count: e.CallCount})
+	}
+	return topo, nil
 }

@@ -65,6 +65,29 @@ func (a *tracesAPI) GetTrace(context.Context, string) (*api.TraceDetailResponse,
 	return &d, json.Unmarshal(b, &d)
 }
 
+func (a *tracesAPI) TraceTopology(context.Context, int64, int64) (*api.TopologyResponse, error) {
+	b, err := os.ReadFile("../../api/testdata/traces_topology.json")
+	if err != nil {
+		return nil, err
+	}
+	var t api.TopologyResponse
+	return &t, json.Unmarshal(b, &t)
+}
+
+func TestTopology(t *testing.T) {
+	topo, err := remote.NewTraces(&tracesAPI{}, nil).Topology(context.Background(), now.Add(-time.Hour), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	orders, ok := topo.Service("lazyobs-demo-orders")
+	if !ok || orders.P95 < time.Second || orders.Errors != 2 || len(topo.Callees("lazyobs-demo-orders")) != 3 {
+		t.Fatalf("orders = %+v, callees %v", orders, topo.Callees("lazyobs-demo-orders"))
+	}
+	if callers := topo.Callers("lazyobs-demo-orders"); len(callers) != 1 || callers[0].From != "lazyobs-demo-gateway" {
+		t.Errorf("callers = %v", callers)
+	}
+}
+
 func roots() [][2]int64 {
 	end := now.Unix()
 	return [][2]int64{{end - 50, 120}, {end - 40, 1677}, {end - 30, 90}, {end - 20, 300}, {end - 10, 150}}

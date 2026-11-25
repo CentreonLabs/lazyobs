@@ -75,3 +75,29 @@ func TestGetTrace(t *testing.T) {
 		t.Error("an empty ID must fail before calling the API")
 	}
 }
+
+func TestTraceTopology(t *testing.T) {
+	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/orgs/my-org_1/traces/topology" || r.URL.Query().Get("start") != "100" || r.URL.Query().Get("end") != "200" {
+			t.Errorf("unexpected %s", r.URL)
+		}
+		_, _ = w.Write(fixture(t, "traces_topology.json"))
+	})
+	topo, err := c.TraceTopology(context.Background(), 100, 200)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(topo.Nodes) != 5 || len(topo.Edges) != 4 {
+		t.Fatalf("topology = %+v", topo)
+	}
+	for _, n := range topo.Nodes {
+		if n.ServiceName == "" || n.SpanCount == 0 || n.P95 == nil {
+			t.Errorf("node = %+v", n)
+		}
+	}
+	for _, e := range topo.Edges {
+		if e.Source == "" || e.Target == "" || e.CallCount == 0 {
+			t.Errorf("edge = %+v", e)
+		}
+	}
+}
