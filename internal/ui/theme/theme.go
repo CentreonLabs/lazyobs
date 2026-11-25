@@ -3,6 +3,7 @@
 package theme
 
 import (
+	"hash/fnv"
 	"image/color"
 
 	"charm.land/lipgloss/v2"
@@ -37,6 +38,10 @@ type Theme struct {
 	Spark      lipgloss.Style
 	PanelTitle lipgloss.Style
 	Chart      chart.Styles
+
+	// Palette tells series apart that have no meaning of their own
+	// (services in a trace waterfall).
+	Palette []color.Color
 
 	severity      map[logs.Severity]lipgloss.Style
 	severityColor map[logs.Severity]color.Color
@@ -91,6 +96,16 @@ func New(dark bool) *Theme {
 		logs.SeverityError:   ld(lipgloss.Color("#B91C1C"), lipgloss.Color("#F2495C")),
 		logs.SeverityFatal:   ld(lipgloss.Color("#86198F"), lipgloss.Color("#E04FF0")),
 	}
+	t.Palette = []color.Color{
+		ld(lipgloss.Color("#1D4ED8"), lipgloss.Color("#5794F2")),
+		ld(lipgloss.Color("#15803D"), lipgloss.Color("#73BF69")),
+		ld(lipgloss.Color("#7E22CE"), lipgloss.Color("#B877D9")),
+		ld(lipgloss.Color("#B45309"), lipgloss.Color("#FF9830")),
+		ld(lipgloss.Color("#0E7490"), lipgloss.Color("#5DD3E6")),
+		ld(lipgloss.Color("#A16207"), lipgloss.Color("#FADE2A")),
+		ld(lipgloss.Color("#BE185D"), lipgloss.Color("#FF7383")),
+		ld(lipgloss.Color("#4D7C0F"), lipgloss.Color("#C8F2C2")),
+	}
 	t.severity = map[logs.Severity]lipgloss.Style{}
 	for sev, c := range t.severityColor {
 		t.severity[sev] = lipgloss.NewStyle().Foreground(c)
@@ -98,6 +113,13 @@ func New(dark bool) *Theme {
 	t.severity[logs.SeverityError] = t.severity[logs.SeverityError].Bold(true)
 	t.severity[logs.SeverityFatal] = t.severity[logs.SeverityFatal].Bold(true)
 	return t
+}
+
+// ColorOf picks a stable palette color for a name.
+func (t *Theme) ColorOf(name string) color.Color {
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(name))
+	return t.Palette[int(h.Sum32()%8)%len(t.Palette)]
 }
 
 // SeverityColor returns the color of a log level.

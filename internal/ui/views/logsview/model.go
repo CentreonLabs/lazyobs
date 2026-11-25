@@ -40,10 +40,13 @@ type Options struct {
 	Translator obs.QueryTranslator // optional, enables natural-language queries
 	Fields     obs.FieldSuggester  // optional, enables query autocompletion
 	Breakdown  obs.Breakdowner     // optional, enables the top values panel
-	Theme      *theme.Theme
-	Query      string
-	Range      obs.TimeRange // DefaultRange when zero
-	PageSize   int
+	// OpenTrace shows a trace (in the traces signal); nil when traces are
+	// not available.
+	OpenTrace func(traceID string, at time.Time) tea.Cmd
+	Theme     *theme.Theme
+	Query     string
+	Range     obs.TimeRange // DefaultRange when zero
+	PageSize  int
 	// LiveInterval is the polling period of live mode (engine default when zero).
 	LiveInterval time.Duration
 	// Now is the clock (time.Now when nil).

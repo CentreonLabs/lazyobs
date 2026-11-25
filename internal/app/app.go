@@ -69,6 +69,18 @@ func Notify(level Level, format string, args ...any) tea.Cmd {
 	return func() tea.Msg { return NotifyMsg{Level: level, Text: fmt.Sprintf(format, args...)} }
 }
 
+// RouteMsg switches to the signal named Signal (its tab title) and delivers
+// Msg to its view, e.g. to open a trace from a log.
+type RouteMsg struct {
+	Signal string
+	Msg    tea.Msg
+}
+
+// Route returns a command routing msg to a signal.
+func Route(signal string, msg tea.Msg) tea.Cmd {
+	return func() tea.Msg { return RouteMsg{Signal: signal, Msg: msg} }
+}
+
 // ResizeMsg gives views the size available for their body.
 type ResizeMsg struct{ Width, Height int }
 
@@ -137,6 +149,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		*m.theme = *theme.New(msg.IsDark()) // views share the pointer
 		m.help.Styles = help.DefaultStyles(m.theme.Dark)
 		return m, nil
+
+	case RouteMsg:
+		for i, t := range m.tabs {
+			if t.View != nil && strings.EqualFold(t.Title, msg.Signal) {
+				m.active, m.showHelp = i, false
+				return m, m.updateActive(msg.Msg)
+			}
+		}
+		return m, Notify(LevelWarn, "%s are not available", strings.ToLower(msg.Signal))
 
 	case NotifyMsg:
 		m.noticeID++
@@ -240,6 +261,16 @@ func (m *Model) bodyMouse(mouse tea.Mouse) (tea.Mouse, bool) {
 		return mouse, false
 	}
 	return mouse, true
+}
+
+// Active is the index of the shown signal.
+func (m *Model) Active() int { return m.active }
+
+// SetActive shows signal i if it has a view (e.g. when restoring a session).
+func (m *Model) SetActive(i int) {
+	if i >= 0 && i < len(m.tabs) && m.tabs[i].View != nil {
+		m.active = i
+	}
 }
 
 func (m *Model) tabNameAt(i int) string {

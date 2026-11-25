@@ -41,6 +41,12 @@ type OpenMsg struct {
 	Child Child
 }
 
+// NewTabMsg asks a tab set to open the tab built from its current one (whose
+// options the new view reuses) and to select it.
+type NewTabMsg struct {
+	Build func(current Child) Child
+}
+
 // Model is a set of tabs.
 type Model struct {
 	name   string
@@ -134,6 +140,9 @@ func (m *Model) Update(msg tea.Msg) (app.SignalView, tea.Cmd) {
 			return m, nil
 		}
 		return m, m.open(msg.Child)
+
+	case NewTabMsg:
+		return m, m.open(msg.Build(m.current()))
 
 	case tea.KeyPressMsg:
 		if !m.current().Capturing() {

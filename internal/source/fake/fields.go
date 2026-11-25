@@ -86,6 +86,8 @@ func fieldValue(r logs.Record, field string) (string, bool) {
 		return fmt.Sprint(r.SeverityNumber), true
 	case "scope_name":
 		return r.ScopeName, true
+	case "trace_id":
+		return r.TraceID, r.TraceID != ""
 	}
 	if k, ok := strings.CutPrefix(field, "attributes."); ok {
 		v, ok := r.Attributes[k]

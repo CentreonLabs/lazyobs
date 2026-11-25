@@ -181,9 +181,6 @@ func (t *Traces) build(sec int64, i int, r *rand.Rand) traces.Detail {
 	}
 	slices.Sort(d.Services)
 	d.Duration = d.Spans[0].Duration
-	for k := range d.Spans {
-		d.Spans[k].Raw = spanJSON(d.Spans[k])
-	}
 	return d
 }
 
@@ -343,7 +340,11 @@ func (t *Traces) Trace(ctx context.Context, id string) (traces.Detail, error) {
 	}
 	sec, i, ok := parseTraceID(id)
 	if ts := t.tracesAt(sec); ok && i < len(ts) {
-		return ts[i], nil
+		d := ts[i]
+		for k := range d.Spans { // the raw form only matters for a whole trace
+			d.Spans[k].Raw = spanJSON(d.Spans[k])
+		}
+		return d, nil
 	}
 	return traces.Detail{}, fmt.Errorf("fake: trace %s not found", id)
 }

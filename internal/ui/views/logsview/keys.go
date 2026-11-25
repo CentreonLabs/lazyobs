@@ -23,6 +23,7 @@ type keyMap struct {
 	Copy      key.Binding
 	Context   key.Binding
 	Breakdown key.Binding
+	Trace     key.Binding
 	FilterIn  key.Binding
 	FilterOut key.Binding
 	UTC       key.Binding
@@ -70,6 +71,7 @@ func defaultKeys() keyMap {
 		Copy:      key.NewBinding(key.WithKeys("y"), key.WithHelp("y", "copy log JSON")),
 		Context:   key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "logs around this one")),
 		Breakdown: key.NewBinding(key.WithKeys("b"), key.WithHelp("b", "top values of a field")),
+		Trace:     key.NewBinding(key.WithKeys("T"), key.WithHelp("T", "trace of the log")),
 		FilterIn: key.NewBinding(key.WithKeys("+", "="),
 			key.WithHelp("+", "details: filter on the field")),
 		FilterOut: key.NewBinding(key.WithKeys("-"),
@@ -100,7 +102,7 @@ func defaultKeys() keyMap {
 
 func (k keyMap) help() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Query, k.Ask, k.Range, k.Detail, k.Context, k.Breakdown, k.Live, k.Pause},
+		{k.Query, k.Ask, k.Range, k.Detail, k.Context, k.Trace, k.Breakdown, k.Live, k.Pause},
 		k.Bindings(),
 		{k.FilterIn, k.FilterOut, k.ZoomOut, k.Earlier, k.Later, k.Refresh, k.Focus, k.Close, k.Copy, k.UTC, k.Layout},
 		{k.DeleteWord, k.ClearLine},

@@ -176,6 +176,9 @@ func (l *Logs) Histogram(ctx context.Context, q obs.Query, buckets int) ([]obs.S
 
 func (l *Logs) wait(ctx context.Context) error { return wait(ctx, l.Latency) }
 
+// traces is the trace source with the same seed, which logs refer to.
+func (l *Logs) traces() *Traces { return NewTraces(l.seed, l.now) }
+
 // wait mimics network latency, honoring cancellation.
 func wait(ctx context.Context, latency time.Duration) error {
 	if latency <= 0 {
@@ -238,7 +241,12 @@ func (l *Logs) recordsAt(sec int64) []logs.Record {
 			ScopeVersion: "1.0.0",
 		}
 		if r.IntN(3) > 0 {
+			// Point at a demo trace of the same seed when one started around
+			// this second, so that logs and traces can be navigated together.
 			rec.TraceID = fmt.Sprintf("%016x%016x", r.Uint64(), r.Uint64())
+			if back := int64(r.IntN(3)); l.traces().count(sec-back) > 0 {
+				rec.TraceID = traceID(sec-back, 0)
+			}
 			rec.SpanID = fmt.Sprintf("%016x", r.Uint64())
 			rec.TraceFlags = 1
 		}

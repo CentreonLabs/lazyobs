@@ -4,6 +4,9 @@ import (
 	"strings"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/CentreonLabs/lazyobs/internal/app"
 	"github.com/CentreonLabs/lazyobs/internal/obs"
 	"github.com/CentreonLabs/lazyobs/internal/ui/tabset"
 )
@@ -53,4 +56,29 @@ func shortRange(r obs.TimeRange, loc *time.Location, now time.Time) string {
 		return from.Format("01-02 15:04") + "→" + to.Format("15:04")
 	}
 	return from.Format("01-02 15:04") + "→" + to.Format("01-02 15:04")
+}
+
+// NewSearch returns a view on the same sources searching query over rng,
+// e.g. the logs of a trace.
+func (m *Model) NewSearch(query string, rng obs.TimeRange) *Model {
+	opts := m.opts
+	opts.Query, opts.Range = query, rng
+	c := New(opts)
+	c.utc, c.compact = m.utc, m.compact
+	return c
+}
+
+// openTrace shows the trace of the selected log.
+func (m *Model) openTrace() tea.Cmd {
+	if len(m.records) == 0 {
+		return nil
+	}
+	r := m.records[m.cursor]
+	switch {
+	case r.TraceID == "":
+		return app.Notify(app.LevelInfo, "this log has no trace ID")
+	case m.opts.OpenTrace == nil:
+		return app.Notify(app.LevelWarn, "traces are not available here")
+	}
+	return m.opts.OpenTrace(r.TraceID, r.Timestamp)
 }

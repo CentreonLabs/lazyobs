@@ -4,8 +4,7 @@ A terminal UI for the Centreon observability platform (formerly Centreon Log Man
 In the spirit of lazygit, lazydocker and k9s: search, filter and investigate your
 observability data without leaving the terminal.
 
-> **Status:** early development. Logs are the first supported signal; traces and
-> metrics will follow.
+> **Status:** early development. Logs and traces are supported; metrics will follow.
 
 ## Features
 
@@ -25,6 +24,9 @@ observability data without leaving the terminal.
 - Keyboard-driven navigation with vim/lazygit-style shortcuts and a help screen (`?`)
 - Several profiles (contexts), like `kubectl`
 - Tabs: several searches side by side, each with its own query, time range and live mode
+- Traces (beta on the platform): trace list sorted by time or duration, volume and errors over
+  time, and a waterfall of each trace's spans with their details
+- Navigate between signals: a log's trace (`T`), a trace's logs (`l`)
 - A `--demo` mode with synthetic data, no account needed
 
 ## Installation
@@ -72,12 +74,18 @@ lazyobs --demo                                   # try it without an account
 | click a row, wheel                              | Select a log, scroll                                                             |
 | `ctrl+t` / `ctrl+w`                             | New tab (from the current search) / close tab                                    |
 | `<` / `>`, click a tab                          | Previous / next tab                                                              |
-| `1` `2` `3`                                     | Switch signal (logs; traces, metrics soon)                                       |
+| `T`                                             | Open the trace of the selected log                                               |
+| `1` `2` `3`                                     | Switch signal (logs, traces; metrics soon)                                       |
 | `?`                                             | Help                                                                             |
 | `q`                                             | Quit                                                                             |
 
 Natural-language queries use the platform's translation service, which requires the Editor role.
 The time span mentioned in the question, if any, replaces the current range.
+
+In the **traces** screen (`2`): `/` searches root spans (the platform matches the root span of each
+trace), `s` sorts by start time or duration, `enter` opens the waterfall, where `j`/`k` select a span
+and `ctrl+d`/`ctrl+u` scroll its details, `l` shows the logs of the trace and `y` copies the span;
+`esc` goes back to the list. Time range, zoom and moves work as for logs.
 
 Live mode polls every 10 seconds and re-queries the last minute to catch logs indexed late.
 

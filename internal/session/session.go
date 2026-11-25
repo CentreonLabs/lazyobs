@@ -21,6 +21,8 @@ const version = 1
 type Session struct {
 	Active int               `json:"active"`
 	Tabs   []json.RawMessage `json:"tabs"` // one view state per tab, owned by the view
+	// Signal is the signal shown (logs, traces...), by its index.
+	Signal int `json:"signal,omitempty"`
 }
 
 type file struct {
