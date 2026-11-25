@@ -204,9 +204,10 @@ func TestMoveInTime(t *testing.T) {
 
 	h.d.Keys("L")
 	h.d.Send(uitest.Key("shift+left"))
-	want := obs.Between(now.Add(-15*time.Minute-7*time.Minute-30*time.Second), now.Add(-7*time.Minute-30*time.Second))
+	quarter := 15 * time.Minute / 4
+	want := obs.Between(now.Add(-15*time.Minute-quarter), now.Add(-quarter))
 	if h.view.rng != want {
-		t.Fatalf("back half a span: %v, want %v", h.view.rng, want)
+		t.Fatalf("back a quarter of the span: %v, want %v", h.view.rng, want)
 	}
 	if h.view.live || !strings.Contains(h.d.Screen(), "live mode stopped") {
 		t.Error("looking at the past must stop live mode")
@@ -220,7 +221,7 @@ func TestMoveInTime(t *testing.T) {
 	}
 
 	h.d.Keys("[")
-	if got := h.view.rng.To; !got.Equal(now.Add(-15 * time.Minute)) {
+	if got := h.view.rng.To; !got.Equal(now.Add(-2 * quarter)) {
 		t.Fatalf("second move back ends at %v", got)
 	}
 	h.d.Keys("]")

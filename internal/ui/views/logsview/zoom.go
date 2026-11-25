@@ -9,8 +9,12 @@ import (
 	"github.com/CentreonLabs/lazyobs/internal/obs"
 )
 
-// minZoomColumns is the narrowest drag that zooms; a shorter one is a click.
-const minZoomColumns = 2
+const (
+	// minZoomColumns is the narrowest drag that zooms; a shorter one is a click.
+	minZoomColumns = 2
+	// panDivisor: moving in time shifts the range by 1/panDivisor of its span.
+	panDivisor = 4
+)
 
 // dragSpan is a selection being dragged on the timeline.
 type dragSpan struct {
@@ -79,7 +83,7 @@ func (m *Model) zoomTo(rng obs.TimeRange) tea.Cmd {
 	return tea.Batch(m.search(), notice)
 }
 
-// pan moves the time range by half its span: dir < 0 goes back in time,
+// pan moves the time range by a quarter of its span: dir < 0 goes back in time,
 // dir > 0 forward. Moving back freezes a relative range; moving forward up to
 // now makes it relative again, so live mode can be resumed.
 func (m *Model) pan(dir int) tea.Cmd {
@@ -89,7 +93,7 @@ func (m *Model) pan(dir int) tea.Cmd {
 	if dir > 0 && !to.Before(now.Add(-time.Second)) {
 		return app.Notify(app.LevelInfo, "already showing the latest logs")
 	}
-	shift := time.Duration(dir) * span / 2
+	shift := time.Duration(dir) * span / panDivisor
 	from, to = from.Add(shift), to.Add(shift)
 
 	var notice tea.Cmd

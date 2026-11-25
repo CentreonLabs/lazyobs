@@ -40,27 +40,27 @@ lazyobs --context staging
 lazyobs --demo                                   # try it without an account
 ```
 
-| Keys                                 | Action                                              |
-| ------------------------------------ | --------------------------------------------------- |
-| `j`/`k`, `g`/`G`, `ctrl+d/u`         | Move in the list (or the focused panel)             |
-| `/`                                  | Edit the query                                      |
-| `a`                                  | Ask in plain words (natural-language query)         |
-| `t`                                  | Time range (`tab` cycles presets)                   |
-| drag on the chart / `-`              | Zoom in on a time span / zoom out                   |
-| `shift+←` / `shift+→` (or `[` / `]`) | Move the time range back / forward by half its span |
-| `enter` / `esc`                      | Open / close the detail panel                       |
-| `tab`                                | Switch focus between list and detail                |
-| `L` / `space`                        | Live mode on/off / pause and resume it              |
-| `r`                                  | Refresh                                             |
-| `y`                                  | Copy the selected log as JSON                       |
-| `z`                                  | Toggle local time / UTC                             |
-| `v`                                  | Split timeline / compact sparkline                  |
-| click a level in the legend          | Show / hide that level in the timeline              |
-| right-click a level                  | Show only that level (again: show all)              |
-| click a row, wheel                   | Select a log, scroll                                |
-| `1` `2` `3`                          | Switch signal (logs; traces, metrics soon)          |
-| `?`                                  | Help                                                |
-| `q`                                  | Quit                                                |
+| Keys                                 | Action                                                      |
+| ------------------------------------ | ----------------------------------------------------------- |
+| `j`/`k`, `g`/`G`, `ctrl+d/u`         | Move in the list (or the focused panel)                     |
+| `/`                                  | Edit the query                                              |
+| `a`                                  | Ask in plain words (natural-language query)                 |
+| `t`                                  | Time range (`tab` cycles presets)                           |
+| drag on the chart / `-`              | Zoom in on a time span / zoom out                           |
+| `shift+←` / `shift+→` (or `[` / `]`) | Move the time range back / forward by a quarter of its span |
+| `enter` / `esc`                      | Open / close the detail panel                               |
+| `tab`                                | Switch focus between list and detail                        |
+| `L` / `space`                        | Live mode on/off / pause and resume it                      |
+| `r`                                  | Refresh                                                     |
+| `y`                                  | Copy the selected log as JSON                               |
+| `z`                                  | Toggle local time / UTC                                     |
+| `v`                                  | Split timeline / compact sparkline                          |
+| click a level in the legend          | Show / hide that level in the timeline                      |
+| right-click a level                  | Show only that level (again: show all)                      |
+| click a row, wheel                   | Select a log, scroll                                        |
+| `1` `2` `3`                          | Switch signal (logs; traces, metrics soon)                  |
+| `?`                                  | Help                                                        |
+| `q`                                  | Quit                                                        |
 
 Natural-language queries use the platform's translation service, which requires the Editor role.
 The time span mentioned in the question, if any, replaces the current range.
