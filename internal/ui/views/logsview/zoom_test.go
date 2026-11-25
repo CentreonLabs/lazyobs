@@ -10,6 +10,7 @@ import (
 
 	"github.com/CentreonLabs/lazyobs/internal/obs"
 	"github.com/CentreonLabs/lazyobs/internal/source/fake"
+	"github.com/CentreonLabs/lazyobs/internal/ui/uitest"
 )
 
 // screenY converts a body row to a screen row (below the header line).
@@ -189,5 +190,42 @@ func TestDragHighlightsTheSelectionAsTheMouseMoves(t *testing.T) {
 	h.d.Send(tea.MouseReleaseMsg{X: x0 - 6, Y: y, Button: tea.MouseLeft})
 	if h.view.drag != nil {
 		t.Error("release must end the selection")
+	}
+}
+
+func TestMoveInTime(t *testing.T) {
+	h := newHarness(t, Options{})
+	now := h.clock.now()
+
+	h.d.Keys("shift+right")
+	if h.view.rng != DefaultRange || !strings.Contains(h.d.Screen(), "already showing the latest logs") {
+		t.Fatalf("moving forward from now must be refused, range %v", h.view.rng)
+	}
+
+	h.d.Keys("L")
+	h.d.Send(uitest.Key("shift+left"))
+	want := obs.Between(now.Add(-15*time.Minute-7*time.Minute-30*time.Second), now.Add(-7*time.Minute-30*time.Second))
+	if h.view.rng != want {
+		t.Fatalf("back half a span: %v, want %v", h.view.rng, want)
+	}
+	if h.view.live || !strings.Contains(h.d.Screen(), "live mode stopped") {
+		t.Error("looking at the past must stop live mode")
+	}
+	var listed []string
+	for _, b := range h.view.ShortHelp() {
+		listed = append(listed, b.Help().Key+" "+b.Help().Desc)
+	}
+	if got := strings.Join(listed, " • "); !strings.Contains(got, "⇧← [ earlier • ⇧→ ] later") {
+		t.Errorf("earlier/later must be listed on an absolute range: %q", got)
+	}
+
+	h.d.Keys("[")
+	if got := h.view.rng.To; !got.Equal(now.Add(-15 * time.Minute)) {
+		t.Fatalf("second move back ends at %v", got)
+	}
+	h.d.Keys("]")
+	h.d.Keys("]")
+	if h.view.rng != obs.Last(15*time.Minute) || !strings.Contains(h.d.Screen(), "back to the latest 15m") {
+		t.Fatalf("moving forward up to now must restore the relative range, got %v", h.view.rng)
 	}
 }

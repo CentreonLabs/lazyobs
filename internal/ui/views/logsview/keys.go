@@ -11,6 +11,8 @@ type keyMap struct {
 	Query   key.Binding
 	Ask     key.Binding
 	ZoomOut key.Binding
+	Earlier key.Binding
+	Later   key.Binding
 	Range   key.Binding
 	Refresh key.Binding
 	Detail  key.Binding
@@ -41,6 +43,8 @@ func defaultKeys() keyMap {
 		Query:   key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "query")),
 		Ask:     key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "ask in plain words")),
 		ZoomOut: key.NewBinding(key.WithKeys("-"), key.WithHelp("-", "zoom out")),
+		Earlier: key.NewBinding(key.WithKeys("shift+left", "["), key.WithHelp("⇧← [", "move back in time")),
+		Later:   key.NewBinding(key.WithKeys("shift+right", "]"), key.WithHelp("⇧→ ]", "move forward in time")),
 		Range:   key.NewBinding(key.WithKeys("t"), key.WithHelp("t", "time range")),
 		Refresh: key.NewBinding(key.WithKeys("r", "ctrl+r"), key.WithHelp("r", "refresh")),
 		Detail:  key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "details")),
@@ -68,7 +72,7 @@ func (k keyMap) help() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Query, k.Ask, k.Range, k.Detail, k.Live, k.Pause},
 		k.Bindings(),
-		{k.ZoomOut, k.Refresh, k.Focus, k.Close, k.Copy, k.UTC, k.Layout},
+		{k.ZoomOut, k.Earlier, k.Later, k.Refresh, k.Focus, k.Close, k.Copy, k.UTC, k.Layout},
 		{k.MouseZoom, k.MouseToggle, k.MouseSolo, k.MouseSelect, k.MouseWheel},
 	}
 }

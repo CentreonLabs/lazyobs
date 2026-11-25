@@ -79,6 +79,34 @@ func (m *Model) zoomTo(rng obs.TimeRange) tea.Cmd {
 	return tea.Batch(m.search(), notice)
 }
 
+// pan moves the time range by half its span: dir < 0 goes back in time,
+// dir > 0 forward. Moving back freezes a relative range; moving forward up to
+// now makes it relative again, so live mode can be resumed.
+func (m *Model) pan(dir int) tea.Cmd {
+	now := m.opts.Now()
+	from, to := m.rng.Resolve(now)
+	span := to.Sub(from)
+	if dir > 0 && !to.Before(now.Add(-time.Second)) {
+		return app.Notify(app.LevelInfo, "already showing the latest logs")
+	}
+	shift := time.Duration(dir) * span / 2
+	from, to = from.Add(shift), to.Add(shift)
+
+	var notice tea.Cmd
+	switch {
+	case !to.Before(now):
+		m.rng = obs.Last(span) // back to the present
+		notice = app.Notify(app.LevelInfo, "back to the latest %s", obs.FormatDuration(span))
+	default:
+		m.rng = obs.Between(from.Truncate(time.Second), to.Truncate(time.Second))
+		if m.live {
+			m.live = false
+			notice = app.Notify(app.LevelInfo, "live mode stopped while looking at the past")
+		}
+	}
+	return tea.Batch(m.search(), notice)
+}
+
 // zoomOut goes back to the range before the last zoom, or doubles the
 // current range around its center.
 func (m *Model) zoomOut() tea.Cmd {

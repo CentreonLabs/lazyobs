@@ -90,7 +90,7 @@ func (d *Driver) Screen() string { return ansi.Strip(d.Model.View().Content) }
 func Key(s string) tea.KeyPressMsg {
 	special := map[string]rune{
 		"enter": tea.KeyEnter, "esc": tea.KeyEscape, "tab": tea.KeyTab, "space": tea.KeySpace,
-		"up": tea.KeyUp, "down": tea.KeyDown, "backspace": tea.KeyBackspace,
+		"up": tea.KeyUp, "down": tea.KeyDown, "left": tea.KeyLeft, "right": tea.KeyRight, "backspace": tea.KeyBackspace,
 		"pgdown": tea.KeyPgDown, "pgup": tea.KeyPgUp,
 	}
 	if code, ok := special[s]; ok {
@@ -102,6 +102,11 @@ func Key(s string) tea.KeyPressMsg {
 	}
 	if len(s) > 5 && s[:5] == "ctrl+" {
 		return tea.KeyPressMsg{Code: rune(s[5]), Mod: tea.ModCtrl}
+	}
+	if len(s) > 6 && s[:6] == "shift+" {
+		k := Key(s[6:])
+		k.Mod |= tea.ModShift
+		return k
 	}
 	r := []rune(s)[0]
 	return tea.KeyPressMsg{Code: r, Text: s}

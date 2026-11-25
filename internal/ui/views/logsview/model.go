@@ -175,6 +175,9 @@ func (m *Model) ShortHelp() []key.Binding {
 	if len(m.zoomStack) > 0 {
 		b = append(b, k.ZoomOut)
 	}
+	if !m.rng.IsRelative() {
+		b = append(b, short(k.Earlier, "earlier"), short(k.Later, "later"))
+	}
 	return b
 }
 

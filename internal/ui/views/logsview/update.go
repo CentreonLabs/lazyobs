@@ -22,6 +22,10 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 		return m.openAsk()
 	case key.Matches(msg, k.ZoomOut):
 		return m.zoomOut()
+	case key.Matches(msg, k.Earlier):
+		return m.pan(-1)
+	case key.Matches(msg, k.Later):
+		return m.pan(+1)
 	case key.Matches(msg, k.Range):
 		m.presetIdx = -1
 		return m.openInput(modeRange, rangeInputValue(m.rng, m.location()), "15m, 2h, 7d or 2026-11-03 13:00 .. 2026-11-03 14:00")
