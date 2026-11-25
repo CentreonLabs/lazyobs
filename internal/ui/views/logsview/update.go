@@ -15,7 +15,10 @@ import (
 
 func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 	k := m.keys
-	if m.detailFocused() {
+	if cmd, ok := m.breakdownKey(msg); ok {
+		return cmd
+	}
+	if m.focus != focusBreakdown && m.detailFocused() {
 		switch {
 		case key.Matches(msg, k.FilterIn):
 			return m.filterOnDetail(false)
@@ -28,6 +31,8 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 		return tea.Batch(m.openInput(modeQuery, m.query, "service_name:api AND severity_text:ERROR"), m.startCompletion())
 	case key.Matches(msg, k.Ask):
 		return m.openAsk()
+	case key.Matches(msg, k.Breakdown):
+		return m.openBreakdownPicker()
 	case key.Matches(msg, k.ZoomOut):
 		return m.zoomOut()
 	case key.Matches(msg, k.Earlier):
@@ -70,14 +75,14 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 		m.scrollToCursor()
 		return nil
 	case key.Matches(msg, k.Focus):
-		if m.showDetail {
-			m.focus = 1 - m.focus
-			m.renderDetailContent() // show or hide the field selection
-		}
+		m.cycleFocus()
 		return nil
 	}
 	if m.focus == focusDetail && m.showDetail {
 		return m.scrollDetail(msg)
+	}
+	if m.focus == focusBreakdown {
+		m.focus = focusList // the panel was closed meanwhile
 	}
 	return m.moveCursor(msg)
 }
@@ -134,6 +139,26 @@ func (m *Model) scrollDetail(msg tea.KeyPressMsg) tea.Cmd {
 		m.detail.PageUp()
 	}
 	return nil
+}
+
+// cycleFocus moves the focus to the next visible panel: list, details,
+// top values.
+func (m *Model) cycleFocus() {
+	order := []focusArea{focusList}
+	if m.showDetail {
+		order = append(order, focusDetail)
+	}
+	if m.breakdownShown() {
+		order = append(order, focusBreakdown)
+	}
+	for i, f := range order {
+		if f == m.focus {
+			m.focus = order[(i+1)%len(order)]
+			m.renderDetailContent() // show or hide the field selection
+			return
+		}
+	}
+	m.focus = focusList
 }
 
 // detailFocused reports whether keys act on the detail panel: it has the
@@ -197,6 +222,12 @@ func (m *Model) submitInput() tea.Cmd {
 			return nil
 		}
 		return m.translate(value)
+	case modeBreakdown:
+		cmd := m.setBreakdown(value)
+		if m.bd.field == value {
+			m.closeInput()
+		}
+		return cmd
 	case modeQuery:
 		m.query = value
 	case modeRange:

@@ -18,9 +18,10 @@ const (
 	// suggestDelay waits for a pause in typing before asking for values.
 	suggestDelay = 150 * time.Millisecond
 	// fieldsTTL is how long the field list is reused.
-	fieldsTTL      = 5 * time.Minute
-	queryPrompt    = "query › "
-	valuesPerField = 10
+	fieldsTTL       = 5 * time.Minute
+	queryPrompt     = "query › "
+	breakdownPrompt = "top values of › "
+	valuesPerField  = 10
 )
 
 // completion is the state of the query autocompletion.
@@ -107,9 +108,12 @@ func (m *Model) onFields(msg fieldsMsg) tea.Cmd {
 // refreshCompletion recomputes the suggestions for the token at the cursor,
 // scheduling a value request when needed.
 func (m *Model) refreshCompletion() tea.Cmd {
-	if m.mode != modeQuery || m.opts.Fields == nil {
+	if (m.mode != modeQuery && m.mode != modeBreakdown) || m.opts.Fields == nil {
 		m.compl.items = nil
 		return nil
+	}
+	if m.mode == modeBreakdown {
+		return m.refreshFieldPicker()
 	}
 	tok := tokenAt([]rune(m.input.Value()), m.input.Position())
 	changed := tok.kind != m.compl.tok.kind || tok.start != m.compl.tok.start || tok.field != m.compl.tok.field || tok.prefix != m.compl.tok.prefix
@@ -150,6 +154,27 @@ func (m *Model) refreshCompletion() tea.Cmd {
 		m.compl.seq++
 		m.compl.pending = k
 		return m.opts.After(suggestDelay, suggestTickMsg{owner: owner{m.id}, seq: m.compl.seq, field: tok.field, prefix: tok.prefix})
+	}
+	return nil
+}
+
+// refreshFieldPicker suggests aggregatable fields for the whole input.
+func (m *Model) refreshFieldPicker() tea.Cmd {
+	value := strings.TrimSpace(m.input.Value())
+	tok := token{kind: tokenField, start: 0, end: len([]rune(m.input.Value())), prefix: value}
+	if tok != m.compl.tok {
+		m.compl.dismissed, m.compl.selected = false, 0
+	}
+	var aggregatable []obs.Field
+	for _, f := range m.compl.fields {
+		if f.Aggregatable {
+			aggregatable = append(aggregatable, f)
+		}
+	}
+	m.compl.tok, m.compl.exact = tok, false
+	m.compl.items = fieldSuggestions(aggregatable, value)
+	if _, ok := m.field(value); ok {
+		m.compl.exact, m.compl.selected = true, -1
 	}
 	return nil
 }
@@ -195,7 +220,7 @@ func (m *Model) onValues(msg valuesMsg) tea.Cmd {
 // completionKey handles the keys of an open suggestion list; ok is false
 // when the key is not for the list.
 func (m *Model) completionKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
-	if m.mode != modeQuery || !m.compl.open() {
+	if (m.mode != modeQuery && m.mode != modeBreakdown) || !m.compl.open() {
 		return nil, false
 	}
 	k, n := m.keys, len(m.compl.items)
@@ -207,7 +232,13 @@ func (m *Model) completionKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 	case key.Matches(msg, k.Accept), key.Matches(msg, k.Submit) && m.compl.selected >= 0:
 		// tab inserts the highlighted (or first) suggestion; enter only a
 		// highlighted one, otherwise it runs the query.
-		value, cursor := complete([]rune(m.input.Value()), m.compl.tok, m.compl.items[max(m.compl.selected, 0)])
+		item := m.compl.items[max(m.compl.selected, 0)]
+		if m.mode == modeBreakdown {
+			m.input.SetValue(item.label)
+			m.input.CursorEnd()
+			return m.refreshCompletion(), true
+		}
+		value, cursor := complete([]rune(m.input.Value()), m.compl.tok, item)
 		m.input.SetValue(value)
 		m.input.SetCursor(cursor)
 		return m.refreshCompletion(), true
@@ -221,7 +252,7 @@ func (m *Model) completionKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 
 // overlayCompletion draws the suggestion list below the query bar.
 func (m *Model) overlayCompletion(view string) string {
-	if m.mode != modeQuery || !m.compl.open() {
+	if (m.mode != modeQuery && m.mode != modeBreakdown) || !m.compl.open() {
 		return view
 	}
 	t := m.th
@@ -241,7 +272,11 @@ func (m *Model) overlayCompletion(view string) string {
 		rows = append(rows, label+"  "+t.Dim.Render(detail))
 	}
 	box := draw.Boxed(rows, t.Dim)
-	x := ansi.StringWidth(queryPrompt) + ansi.StringWidth(string([]rune(m.input.Value())[:m.compl.tok.start])) - 2
+	prompt := queryPrompt
+	if m.mode == modeBreakdown {
+		prompt = breakdownPrompt
+	}
+	x := ansi.StringWidth(prompt) + ansi.StringWidth(string([]rune(m.input.Value())[:m.compl.tok.start])) - 2
 	x = min(max(x, 0), max(m.width-ansi.StringWidth(box[0]), 0))
 	lines := strings.Split(view, "\n")
 	draw.Overlay(lines, box, x, 1)

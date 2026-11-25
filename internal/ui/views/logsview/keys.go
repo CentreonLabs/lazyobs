@@ -22,6 +22,7 @@ type keyMap struct {
 	Pause     key.Binding
 	Copy      key.Binding
 	Context   key.Binding
+	Breakdown key.Binding
 	FilterIn  key.Binding
 	FilterOut key.Binding
 	UTC       key.Binding
@@ -53,21 +54,22 @@ type keyMap struct {
 
 func defaultKeys() keyMap {
 	return keyMap{
-		List:    keys.DefaultList(),
-		Query:   key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "query")),
-		Ask:     key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "ask in plain words")),
-		ZoomOut: key.NewBinding(key.WithKeys("-"), key.WithHelp("-", "zoom out")),
-		Earlier: key.NewBinding(key.WithKeys("shift+left", "["), key.WithHelp("⇧← [", "move back in time")),
-		Later:   key.NewBinding(key.WithKeys("shift+right", "]"), key.WithHelp("⇧→ ]", "move forward in time")),
-		Range:   key.NewBinding(key.WithKeys("t"), key.WithHelp("t", "time range")),
-		Refresh: key.NewBinding(key.WithKeys("r", "ctrl+r"), key.WithHelp("r", "refresh")),
-		Detail:  key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "details")),
-		Focus:   key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "switch panel")),
-		Close:   key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "close details")),
-		Live:    key.NewBinding(key.WithKeys("L"), key.WithHelp("L", "live on/off")),
-		Pause:   key.NewBinding(key.WithKeys("space"), key.WithHelp("space", "pause live")),
-		Copy:    key.NewBinding(key.WithKeys("y"), key.WithHelp("y", "copy log JSON")),
-		Context: key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "logs around this one")),
+		List:      keys.DefaultList(),
+		Query:     key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "query")),
+		Ask:       key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "ask in plain words")),
+		ZoomOut:   key.NewBinding(key.WithKeys("-"), key.WithHelp("-", "zoom out")),
+		Earlier:   key.NewBinding(key.WithKeys("shift+left", "["), key.WithHelp("⇧← [", "move back in time")),
+		Later:     key.NewBinding(key.WithKeys("shift+right", "]"), key.WithHelp("⇧→ ]", "move forward in time")),
+		Range:     key.NewBinding(key.WithKeys("t"), key.WithHelp("t", "time range")),
+		Refresh:   key.NewBinding(key.WithKeys("r", "ctrl+r"), key.WithHelp("r", "refresh")),
+		Detail:    key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "details")),
+		Focus:     key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "switch panel")),
+		Close:     key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "close details")),
+		Live:      key.NewBinding(key.WithKeys("L"), key.WithHelp("L", "live on/off")),
+		Pause:     key.NewBinding(key.WithKeys("space"), key.WithHelp("space", "pause live")),
+		Copy:      key.NewBinding(key.WithKeys("y"), key.WithHelp("y", "copy log JSON")),
+		Context:   key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "logs around this one")),
+		Breakdown: key.NewBinding(key.WithKeys("b"), key.WithHelp("b", "top values of a field")),
 		FilterIn: key.NewBinding(key.WithKeys("+", "="),
 			key.WithHelp("+", "details: filter on the field")),
 		FilterOut: key.NewBinding(key.WithKeys("-"),
@@ -98,7 +100,7 @@ func defaultKeys() keyMap {
 
 func (k keyMap) help() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Query, k.Ask, k.Range, k.Detail, k.Context, k.Live, k.Pause},
+		{k.Query, k.Ask, k.Range, k.Detail, k.Context, k.Breakdown, k.Live, k.Pause},
 		k.Bindings(),
 		{k.FilterIn, k.FilterOut, k.ZoomOut, k.Earlier, k.Later, k.Refresh, k.Focus, k.Close, k.Copy, k.UTC, k.Layout},
 		{k.DeleteWord, k.ClearLine},

@@ -79,7 +79,7 @@ func (m *Model) onTail(msg tailMsg) tea.Cmd {
 	}
 	m.liveErrs = 0
 	m.prepend(msg.update.Items)
-	cmds := []tea.Cmd{next, m.fetchHistogram()}
+	cmds := []tea.Cmd{next, m.fetchHistogram(), m.fetchBreakdown()}
 	for _, w := range msg.update.Warnings {
 		cmds = append(cmds, app.Notify(app.LevelWarn, "%s", w))
 	}

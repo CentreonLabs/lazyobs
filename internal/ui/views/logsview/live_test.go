@@ -44,6 +44,7 @@ func newHarnessWith(t *testing.T, opts Options, restore *State) *harness {
 	src := fake.NewLogs(8, h.clock.now)
 	th := theme.New(true)
 	opts.Source, opts.Histogram, opts.Fields, opts.Theme, opts.Now = src, src, src, th, h.clock.now
+	opts.Breakdown = src
 	opts.After = func(_ time.Duration, msg tea.Msg) tea.Cmd {
 		h.ticks = append(h.ticks, msg)
 		return nil

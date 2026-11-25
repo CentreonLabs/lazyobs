@@ -33,6 +33,7 @@ type tuiOptions struct {
 type logSource interface {
 	obs.Searcher[logs.Record]
 	obs.Histogrammer
+	obs.Breakdowner
 }
 
 func (a *app) runTUI(ctx context.Context, opts tuiOptions) error {
@@ -76,7 +77,7 @@ func (a *app) runTUI(ctx context.Context, opts tuiOptions) error {
 	}
 
 	th := theme.New(true) // refined once the terminal reports its background
-	viewOpts := logsview.Options{Source: src, Histogram: src, Fields: fields, Translator: translator, Theme: th}
+	viewOpts := logsview.Options{Source: src, Histogram: src, Breakdown: src, Fields: fields, Translator: translator, Theme: th}
 	store := session.Store{Path: session.DefaultPath(a.env.Getenv)}
 
 	// Reopen the last session unless the command line asks for a new search.

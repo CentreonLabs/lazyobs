@@ -31,7 +31,20 @@ func (m *Model) View(width, height int) string {
 	timelineH := 1
 	if lay.timeline > 0 {
 		// The box starts below the query bar; its content is inset by the border.
-		timeline = m.box("Log volume by severity", m.renderTimeline(width-2, lay.timeline-2, 1, 2), width-2, lay.timeline-2, false)
+		tw := width
+		if m.breakdownShown() {
+			tw = width * 64 / 100
+		}
+		timeline = m.box("Log volume by severity", m.renderTimeline(tw-2, lay.timeline-2, 1, 2), tw-2, lay.timeline-2, false)
+		if bw := width - tw; m.breakdownShown() {
+			title := "Top " + m.bd.field
+			if total := m.bd.data.Total; total > 0 {
+				title += " · " + humanCount(total) + " logs"
+			}
+			panel := m.box(title, m.renderBreakdown(bw-2, lay.timeline-2), bw-2, lay.timeline-2, m.focus == focusBreakdown)
+			timeline = lipgloss.JoinHorizontal(lipgloss.Top, timeline, panel)
+			m.hits.bdX, m.hits.bdTop, m.hits.bdRows = tw+1, 2, lay.timeline-2
+		}
 		timelineH = lay.timeline
 	}
 	panelH := lay.panels
@@ -72,6 +85,8 @@ func (m *Model) renderBar() string {
 		left = t.Key.Render("range › ") + m.input.View() + t.Dim.Render("  tab: "+strings.Join(rangePresets, " "))
 	case modeAsk:
 		left = t.Key.Render("ask › ") + m.input.View()
+	case modeBreakdown:
+		left = t.Key.Render(breakdownPrompt) + m.input.View()
 	default:
 		q := m.query
 		if strings.TrimSpace(q) == "" {

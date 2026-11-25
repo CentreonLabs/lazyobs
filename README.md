@@ -13,6 +13,7 @@ observability data without leaving the terminal.
 - Query autocompletion: field names, then their most frequent values over the displayed period
 - Logs around a log: the same service ±30 s in a new tab, the original log selected and marked
 - Filter from a log: pick a field in the detail panel and add it to the query (`+`) or exclude it (`-`)
+- Top values: the distribution of any field (`b`) next to the timeline, following the query; filter on a value
 - Ask in plain words ("errors from checkout in the last hour"), translated to a query by the
   platform
 - Zoom on a time span by dragging on the chart
@@ -44,35 +45,36 @@ lazyobs --context staging
 lazyobs --demo                                   # try it without an account
 ```
 
-| Keys                                            | Action                                                                   |
-| ----------------------------------------------- | ------------------------------------------------------------------------ |
-| `j`/`k`, `g`/`G`, `ctrl+d/u`                    | Move in the list (or the focused panel)                                  |
-| `/`                                             | Edit the query                                                           |
-| `enter` or `tab`, `↑`/`↓` while typing a query  | Insert / choose a suggested field or value (`enter` again searches)      |
-| `⌥⌫` `⇧⌫` `ctrl+w` / `⌘⌫` `ctrl+u` while typing | Delete the previous word / everything before the cursor                  |
-| `a`                                             | Ask in plain words (natural-language query)                              |
-| `t`                                             | Time range (`tab` cycles presets)                                        |
-| hover the chart                                 | Tooltip with the values of each level in that bucket                     |
-| click on the chart                              | Go to the newest log of that bucket in the list (`r` back to the latest) |
-| drag on the chart / `-`                         | Zoom in on a time span / zoom out                                        |
-| `shift+←` / `shift+→` (or `[` / `]`)            | Move the time range back / forward by a quarter of its span              |
-| `enter` / `esc`                                 | Open / close the detail panel                                            |
-| `c`                                             | Logs around the selected one (same service, ±30 s, new tab)              |
-| `tab` then `j`/`k`, `+` / `-`                   | In the detail panel: choose a field, filter on it / exclude it           |
-| `tab`                                           | Switch focus between list and detail                                     |
-| `L` / `space`                                   | Live mode on/off / pause and resume it                                   |
-| `r`                                             | Refresh                                                                  |
-| `y`                                             | Copy the selected log as JSON                                            |
-| `z`                                             | Toggle local time / UTC                                                  |
-| `v`                                             | Split timeline / compact sparkline                                       |
-| click a level in the legend                     | Show / hide that level in the timeline                                   |
-| right-click a level                             | Show only that level (again: show all)                                   |
-| click a row, wheel                              | Select a log, scroll                                                     |
-| `ctrl+t` / `ctrl+w`                             | New tab (from the current search) / close tab                            |
-| `<` / `>`, click a tab                          | Previous / next tab                                                      |
-| `1` `2` `3`                                     | Switch signal (logs; traces, metrics soon)                               |
-| `?`                                             | Help                                                                     |
-| `q`                                             | Quit                                                                     |
+| Keys                                            | Action                                                                           |
+| ----------------------------------------------- | -------------------------------------------------------------------------------- |
+| `j`/`k`, `g`/`G`, `ctrl+d/u`                    | Move in the list (or the focused panel)                                          |
+| `/`                                             | Edit the query                                                                   |
+| `enter` or `tab`, `↑`/`↓` while typing a query  | Insert / choose a suggested field or value (`enter` again searches)              |
+| `⌥⌫` `⇧⌫` `ctrl+w` / `⌘⌫` `ctrl+u` while typing | Delete the previous word / everything before the cursor                          |
+| `a`                                             | Ask in plain words (natural-language query)                                      |
+| `t`                                             | Time range (`tab` cycles presets)                                                |
+| hover the chart                                 | Tooltip with the values of each level in that bucket                             |
+| click on the chart                              | Go to the newest log of that bucket in the list (`r` back to the latest)         |
+| drag on the chart / `-`                         | Zoom in on a time span / zoom out                                                |
+| `shift+←` / `shift+→` (or `[` / `]`)            | Move the time range back / forward by a quarter of its span                      |
+| `enter` / `esc`                                 | Open / close the detail panel                                                    |
+| `c`                                             | Logs around the selected one (same service, ±30 s, new tab)                      |
+| `tab` then `j`/`k`, `+` / `-`                   | In the detail panel: choose a field, filter on it / exclude it                   |
+| `b`                                             | Top values of a field next to the timeline (`tab` to it, then `+` / `-` / `esc`) |
+| `tab`                                           | Switch focus between list and detail                                             |
+| `L` / `space`                                   | Live mode on/off / pause and resume it                                           |
+| `r`                                             | Refresh                                                                          |
+| `y`                                             | Copy the selected log as JSON                                                    |
+| `z`                                             | Toggle local time / UTC                                                          |
+| `v`                                             | Split timeline / compact sparkline                                               |
+| click a level in the legend                     | Show / hide that level in the timeline                                           |
+| right-click a level                             | Show only that level (again: show all)                                           |
+| click a row, wheel                              | Select a log, scroll                                                             |
+| `ctrl+t` / `ctrl+w`                             | New tab (from the current search) / close tab                                    |
+| `<` / `>`, click a tab                          | Previous / next tab                                                              |
+| `1` `2` `3`                                     | Switch signal (logs; traces, metrics soon)                                       |
+| `?`                                             | Help                                                                             |
+| `q`                                             | Quit                                                                             |
 
 Natural-language queries use the platform's translation service, which requires the Editor role.
 The time span mentioned in the question, if any, replaces the current range.
@@ -130,7 +132,7 @@ or logs the token.
 ## Sessions
 
 lazyobs reopens where you left it: on exit, the tabs of the current context (query, time range,
-live mode, hidden levels, detail panel, display preferences) are saved to `~/.local/state/lazyobs/state.json`
+live mode, hidden levels, detail panel, top values field, display preferences) are saved to `~/.local/state/lazyobs/state.json`
 (`$XDG_STATE_HOME`; `%LocalAppData%` on Windows) and restored on the next start. Relative ranges
 ("last 15m") follow the clock, absolute ones stay where they were. Each context, and the demo, has
 its own session.

@@ -26,6 +26,8 @@ type hitAreas struct {
 	detailActive bool
 	detailTop    int // body row of the first detail line
 
+	bdX, bdTop, bdRows int // top values panel: first column, first row, rows; bdRows 0 when hidden
+
 	chart        chart.Layout
 	plotX, plotY int // body position of the plot area
 	plotW, plotH int // 0 when no chart is shown
@@ -58,6 +60,13 @@ func (m *Model) onClick(mouse tea.Mouse) tea.Cmd {
 		return nil
 	}
 	if mouse.Button != tea.MouseLeft {
+		return nil
+	}
+	if h.bdRows > 0 && mouse.X >= h.bdX && mouse.Y >= h.bdTop && mouse.Y < h.bdTop+h.bdRows {
+		if i := m.bd.offset + mouse.Y - h.bdTop; i < len(m.breakdownRows()) {
+			m.focus, m.bd.selected = focusBreakdown, i
+			m.renderDetailContent()
+		}
 		return nil
 	}
 	if h.detailActive && mouse.X >= h.listRight {

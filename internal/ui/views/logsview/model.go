@@ -38,6 +38,7 @@ type Options struct {
 	Histogram  obs.Histogrammer    // optional
 	Translator obs.QueryTranslator // optional, enables natural-language queries
 	Fields     obs.FieldSuggester  // optional, enables query autocompletion
+	Breakdown  obs.Breakdowner     // optional, enables the top values panel
 	Theme      *theme.Theme
 	Query      string
 	Range      obs.TimeRange // DefaultRange when zero
@@ -58,6 +59,7 @@ type (
 const (
 	focusList focusArea = iota
 	focusDetail
+	focusBreakdown
 )
 
 const (
@@ -65,6 +67,7 @@ const (
 	modeQuery
 	modeRange
 	modeAsk
+	modeBreakdown
 )
 
 // Model is the logs view.
@@ -128,6 +131,9 @@ type Model struct {
 
 	// Query autocompletion.
 	compl completion
+
+	// Top values of a field, next to the timeline.
+	bd breakdown
 
 	// The log this view was opened around (see openContext), 0 if none.
 	anchor      uint64
@@ -201,6 +207,14 @@ func (m *Model) ShortHelp() []key.Binding {
 		return []key.Binding{k.NextPreset, k.Submit, k.Cancel}
 	case modeAsk:
 		return []key.Binding{short(k.Submit, "ask"), k.Cancel}
+	case modeBreakdown:
+		return []key.Binding{short(k.Submit, "show"), short(k.SuggestNext, "choose"), k.Cancel}
+	}
+	if m.focus == focusBreakdown && m.breakdownShown() {
+		return []key.Binding{
+			short(k.FilterIn, "filter on value"), short(k.FilterOut, "exclude"),
+			short(k.Down, "value"), short(k.Focus, "next panel"), short(k.Close, "close"),
+		}
 	}
 	if m.detailFocused() {
 		return []key.Binding{
@@ -309,7 +323,7 @@ func (m *Model) Update(msg tea.Msg) (app.SignalView, tea.Cmd) {
 		m.layoutDetail()
 		m.scrollToCursor()
 		if m.pager != nil && m.timelineColumns() != m.histCols {
-			return m, m.fetchHistogram() // match the new width
+			return m, tea.Batch(m.fetchHistogram(), m.fetchBreakdownIfMissing()) // match the new width
 		}
 		return m, nil
 	case pageMsg:
@@ -336,6 +350,9 @@ func (m *Model) Update(msg tea.Msg) (app.SignalView, tea.Cmd) {
 		return m, m.onSuggestTick(msg)
 	case valuesMsg:
 		return m, m.onValues(msg)
+	case breakdownMsg:
+		m.onBreakdown(msg)
+		return m, nil
 	case tea.MouseMotionMsg:
 		m.onMouseMove(msg.Mouse())
 		return m, nil
@@ -366,7 +383,8 @@ func (m *Model) search() tea.Cmd {
 	m.jump, m.listEnd = nil, time.Time{}
 	m.loading = true
 	m.setDetail()
-	return tea.Batch(m.fetchPage(), m.fetchHistogram())
+	m.bd.data, m.bd.err = obs.Breakdown{}, nil
+	return tea.Batch(m.fetchPage(), m.fetchHistogram(), m.fetchBreakdown())
 }
 
 func (m *Model) fetchPage() tea.Cmd {
@@ -468,4 +486,13 @@ func (m *Model) location() *time.Location {
 		return time.UTC
 	}
 	return time.Local
+}
+
+// fetchBreakdownIfMissing loads the panel when it is shown without data
+// (e.g. the first size of a restored view).
+func (m *Model) fetchBreakdownIfMissing() tea.Cmd {
+	if m.bd.field == "" || m.bd.loading || m.bd.data.Total > 0 || len(m.bd.data.Values) > 0 {
+		return nil
+	}
+	return m.fetchBreakdown()
 }

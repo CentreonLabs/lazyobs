@@ -15,7 +15,12 @@ func (m *Model) filterOnDetail(exclude bool) tea.Cmd {
 	if len(m.detailEntries) == 0 {
 		return nil
 	}
-	term := filterTerm(m.detailEntries[m.detailField], exclude)
+	return m.applyFilter(m.detailEntries[m.detailField], exclude)
+}
+
+// applyFilter adds an entry to the query (or excludes it) and searches.
+func (m *Model) applyFilter(e filterEntry, exclude bool) tea.Cmd {
+	term := filterTerm(e, exclude)
 	query, added := addTerm(m.query, term)
 	if !added {
 		return app.Notify(app.LevelInfo, "the query already has %s", term)

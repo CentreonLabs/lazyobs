@@ -19,6 +19,8 @@ type State struct {
 	Detail  bool          `json:"detail,omitempty"` // detail panel open
 	// DetailField is the field selected in the detail panel, for filters.
 	DetailField string `json:"detail_field,omitempty"`
+	// Breakdown is the field of the top values panel, empty when closed.
+	Breakdown string `json:"breakdown,omitempty"`
 }
 
 // Snapshot captures the state to save.
@@ -26,7 +28,7 @@ func (m *Model) Snapshot() State {
 	s := State{
 		Query: m.query, Range: m.rng, Live: m.live,
 		UTC: m.utc, Compact: m.compact, Prompt: m.lastPrompt,
-		Detail: m.showDetail, DetailField: m.detailName,
+		Detail: m.showDetail, DetailField: m.detailName, Breakdown: m.bd.field,
 	}
 	for name, hidden := range m.hidden {
 		if hidden {
@@ -43,6 +45,7 @@ func Restore(opts Options, s State) *Model {
 	m := New(opts)
 	m.live, m.utc, m.compact, m.lastPrompt = s.Live && s.Range.IsRelative(), s.UTC, s.Compact, s.Prompt
 	m.showDetail, m.detailName = s.Detail, s.DetailField
+	m.bd.field = s.Breakdown
 	for _, name := range s.Hidden {
 		m.hidden[name] = true
 	}

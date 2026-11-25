@@ -35,6 +35,7 @@ func (m *Model) Clone() tabset.Child {
 		c.hidden[k] = v
 	}
 	c.lastPrompt = m.lastPrompt
+	c.bd.field = m.bd.field
 	return c
 }
 
