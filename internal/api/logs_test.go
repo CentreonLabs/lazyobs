@@ -16,7 +16,7 @@ import (
 	"github.com/CentreonLabs/lazyobs/internal/secret"
 )
 
-const testToken = "tok-0123456789abcdef"
+const testToken = "tok-0123456789abcdef" // gitleaks:allow (fake test value)
 
 // newTestClient starts a server running handler and returns a client pointing at it.
 func newTestClient(t *testing.T, handler http.HandlerFunc) *api.Client {

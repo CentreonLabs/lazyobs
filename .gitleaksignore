@@ -1,0 +1,2 @@
+# Fake token used by the API client tests (internal/api/logs_test.go), not a credential.
+9b1e551a2c0ed76c8e07383e438bace511f14dfb:internal/api/logs_test.go:generic-api-key:19
