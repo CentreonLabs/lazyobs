@@ -24,7 +24,7 @@ func series(name string, step time.Duration, values ...float64) obs.Series {
 
 func render(t *testing.T, w, h int, s ...obs.Series) []string {
 	t.Helper()
-	out := Render(Options{
+	out, _ := Render(Options{
 		Width: w, Height: h, From: from, To: from.Add(time.Hour), Location: time.UTC, Series: s,
 		Color:  func(string) color.Color { return lipgloss.Color("#ff0000") },
 		Marker: from.Add(30 * time.Minute),
@@ -150,5 +150,48 @@ func TestFormatValue(t *testing.T) {
 		if got := formatValue(v); got != want {
 			t.Errorf("formatValue(%v) = %q, want %q", v, got, want)
 		}
+	}
+}
+
+func TestHiddenSeriesAndLegendPositions(t *testing.T) {
+	big := series("INFO", time.Minute, 600, 600, 600)
+	small := series("ERROR", time.Minute, 60, 60, 60)
+	opts := Options{
+		Width: 80, Height: 8, From: from, To: from.Add(3 * time.Minute), Location: time.UTC,
+		Series: []obs.Series{big, small},
+		Color:  func(string) color.Color { return lipgloss.Color("#ff0000") },
+	}
+
+	out, legend := Render(opts)
+	lines := strings.Split(ansi.Strip(out), "\n")
+	if legend.Row != len(lines)-1 || len(legend.Items) != 2 {
+		t.Fatalf("legend = %+v", legend)
+	}
+	row := []rune(lines[legend.Row])
+	for _, it := range legend.Items {
+		if got := string(row[it.X0:it.X1]); !strings.Contains(got, it.Name) {
+			t.Errorf("legend item %q covers %q", it.Name, got)
+		}
+		if name, ok := legend.At(it.X0 + 1); !ok || name != it.Name {
+			t.Errorf("At(%d) = %q", it.X0+1, name)
+		}
+	}
+	if _, ok := legend.At(legend.Items[0].X1 + 1); ok {
+		t.Error("the gap between entries must not match")
+	}
+	if !strings.HasPrefix(lines[0], "10/s") {
+		t.Errorf("peak of INFO (10/s) should set the scale: %q", lines[0])
+	}
+
+	// Hiding INFO rescales to ERROR (1/s) and dims its legend entry.
+	opts.Hidden = map[string]bool{"INFO": true}
+	opts.LegendHint = "click to toggle"
+	out, legend = Render(opts)
+	lines = strings.Split(ansi.Strip(out), "\n")
+	if !strings.HasPrefix(strings.TrimSpace(lines[0]), "1/s") {
+		t.Errorf("hidden series must not drive the scale: %q", lines[0])
+	}
+	if !strings.Contains(lines[legend.Row], "── INFO") || !strings.Contains(lines[legend.Row], "click to toggle") {
+		t.Errorf("legend = %q", lines[legend.Row])
 	}
 }

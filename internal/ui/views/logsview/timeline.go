@@ -44,7 +44,9 @@ func (m *Model) timelineColumns() int {
 	return max(m.width-12, 10)
 }
 
-func (m *Model) renderTimeline(width, height int) string {
+// renderTimeline draws the chart and records where its legend is. The chart
+// is drawn at (originX, originY) in body coordinates.
+func (m *Model) renderTimeline(width, height, originX, originY int) string {
 	if len(m.hist) == 0 || !m.histFrom.Before(m.histTo) {
 		msg := "Loading…"
 		if !m.loading {
@@ -56,17 +58,23 @@ func (m *Model) renderTimeline(width, height int) string {
 	if len(m.records) > 0 {
 		marker = m.records[m.cursor].Timestamp
 	}
-	return chart.Render(chart.Options{
-		Width:    width,
-		Height:   height,
-		From:     m.histFrom,
-		To:       m.histTo,
-		Location: m.location(),
-		Series:   m.hist,
-		Color:    func(name string) color.Color { return m.th.SeverityColor(logs.ParseSeverity(name)) },
-		Marker:   marker,
-		Styles:   m.th.Chart,
+	out, legend := chart.Render(chart.Options{
+		Width:      width,
+		Height:     height,
+		From:       m.histFrom,
+		To:         m.histTo,
+		Location:   m.location(),
+		Series:     m.hist,
+		Color:      func(name string) color.Color { return m.th.SeverityColor(logs.ParseSeverity(name)) },
+		Marker:     marker,
+		Hidden:     m.hidden,
+		LegendHint: legendHint,
+		Styles:     m.th.Chart,
 	})
+	if legend.Row >= 0 {
+		m.hits.legend, m.hits.legendX, m.hits.legendY = legend, originX, originY+legend.Row
+	}
+	return out
 }
 
 // totalSeries sums all series into one, for the sparkline.

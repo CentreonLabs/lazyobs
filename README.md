@@ -49,11 +49,18 @@ lazyobs --demo                                   # try it without an account
 | `y`                          | Copy the selected log as JSON              |
 | `z`                          | Toggle local time / UTC                    |
 | `v`                          | Split timeline / compact sparkline         |
+| click a level in the legend  | Show / hide that level in the timeline     |
+| right-click a level          | Show only that level (again: show all)     |
+| click a row, wheel           | Select a log, scroll                       |
 | `1` `2` `3`                  | Switch signal (logs; traces, metrics soon) |
 | `?`                          | Help                                       |
 | `q`                          | Quit                                       |
 
 Live mode polls every 10 seconds and re-queries the last minute to catch logs indexed late.
+
+lazyobs captures the mouse, so terminals reserve shift+click for themselves: select text with
+shift+drag (option+drag in iTerm2), or copy a log with `y`. Shift/alt/ctrl+click on a level also
+shows only that level when the terminal forwards it.
 
 ## Configuration
 

@@ -26,11 +26,18 @@ func (m *Model) View(width, height int) string {
 	m.width, m.height = width, height
 	lay := m.layout()
 	bar := m.renderBar()
+	m.hits = hitAreas{legendY: -1, listRight: width}
 	timeline := m.renderSpark()
+	timelineH := 1
 	if lay.timeline > 0 {
-		timeline = m.box("Log volume by severity", m.renderTimeline(width-2, lay.timeline-2), width-2, lay.timeline-2, false)
+		// The box starts below the query bar; its content is inset by the border.
+		timeline = m.box("Log volume by severity", m.renderTimeline(width-2, lay.timeline-2, 1, 2), width-2, lay.timeline-2, false)
+		timelineH = lay.timeline
 	}
 	panelH := lay.panels
+	panelTop := 1 + timelineH
+	m.hits.listTop = panelTop + 2 // border and column header
+	m.hits.listRows = max(panelH-3, 0)
 
 	var panels string
 	switch {
@@ -39,11 +46,13 @@ func (m *Model) View(width, height int) string {
 	case width >= sideBySideWidth:
 		lw := width * 55 / 100
 		dw := width - lw
+		m.hits.listRight, m.hits.detailActive = lw, true
 		panels = lipgloss.JoinHorizontal(lipgloss.Top,
 			m.box("Logs", m.renderList(lw-2, panelH-2), lw-2, panelH-2, m.focus == focusList),
 			m.box("Details", m.detail.View(), dw-2, panelH-2, m.focus == focusDetail),
 		)
 	default:
+		m.hits.listRight, m.hits.detailActive, m.hits.listRows = 0, true, 0
 		panels = m.box("Details", m.detail.View(), width-2, panelH-2, true)
 	}
 	return lipgloss.JoinVertical(lipgloss.Left, bar, timeline, panels)

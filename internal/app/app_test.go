@@ -135,13 +135,13 @@ func TestEmptyResultAndHelp(t *testing.T) {
 	d.Keys("?")
 	s := d.Screen()
 	dump(t, d)
-	for _, want := range []string{"Keyboard shortcuts", "time range", "live on/off", "half page down", "quit"} {
+	for _, want := range []string{"Keyboard and mouse shortcuts", "time range", "live on/off", "half page down", "quit"} {
 		if !strings.Contains(s, want) {
 			t.Errorf("help misses %q", want)
 		}
 	}
 	d.Keys("?")
-	if strings.Contains(d.Screen(), "Keyboard shortcuts") {
+	if strings.Contains(d.Screen(), "Keyboard and mouse shortcuts") {
 		t.Error("? must close the help")
 	}
 	d.Keys("2")

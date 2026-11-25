@@ -4,6 +4,7 @@
 package uitest
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -104,4 +105,26 @@ func Key(s string) tea.KeyPressMsg {
 	}
 	r := []rune(s)[0]
 	return tea.KeyPressMsg{Code: r, Text: s}
+}
+
+// Click sends a mouse click at screen coordinates.
+func (d *Driver) Click(x, y int, button tea.MouseButton, mod tea.KeyMod) {
+	d.t.Helper()
+	d.Send(tea.MouseClickMsg{X: x, Y: y, Button: button, Mod: mod})
+}
+
+// Wheel sends a wheel event at screen coordinates.
+func (d *Driver) Wheel(x, y int, button tea.MouseButton) {
+	d.t.Helper()
+	d.Send(tea.MouseWheelMsg{X: x, Y: y, Button: button})
+}
+
+// Find returns the screen coordinates of the first occurrence of s.
+func (d *Driver) Find(s string) (x, y int, ok bool) {
+	for y, line := range strings.Split(d.Screen(), "\n") {
+		if i := strings.Index(line, s); i >= 0 {
+			return len([]rune(line[:i])), y, true
+		}
+	}
+	return 0, 0, false
 }

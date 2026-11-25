@@ -35,7 +35,35 @@ type Options struct {
 	Color func(name string) color.Color
 	// Marker, when non-zero, draws a vertical line at that time.
 	Marker time.Time
-	Styles Styles
+	// Hidden series are not drawn nor used for the scale; they stay in the
+	// legend, dimmed, so they can be shown again.
+	Hidden map[string]bool
+	// LegendHint is appended to the legend, dimmed.
+	LegendHint string
+	Styles     Styles
+}
+
+// Legend locates the legend entries in the rendered chart, so that clicks
+// can be mapped to series.
+type Legend struct {
+	Row   int // line of the legend within the chart
+	Items []LegendItem
+}
+
+// LegendItem is the horizontal extent [X0, X1) of a series in the legend.
+type LegendItem struct {
+	Name   string
+	X0, X1 int
+}
+
+// At returns the series whose legend entry covers column x.
+func (l Legend) At(x int) (string, bool) {
+	for _, it := range l.Items {
+		if x >= it.X0 && x < it.X1 {
+			return it.Name, true
+		}
+	}
+	return "", false
 }
 
 // Layout constants.
@@ -46,24 +74,31 @@ const (
 	minPlotH   = 2
 )
 
-// Render draws the chart. It always returns exactly Height lines.
-func Render(o Options) string {
+// Render draws the chart, always exactly Height lines, and tells where the
+// legend entries are.
+func Render(o Options) (string, Legend) {
 	if o.Location == nil {
 		o.Location = time.Local
 	}
 	span := o.To.Sub(o.From)
 	plotH := o.Height - xAxisLines - legendRows
 	if span <= 0 || plotH < minPlotH {
-		return pad("", o.Width, o.Height)
+		return pad("", o.Width, o.Height), Legend{Row: -1}
+	}
+	visible := make([]obs.Series, 0, len(o.Series))
+	for _, s := range o.Series {
+		if !o.Hidden[s.Name] {
+			visible = append(visible, s)
+		}
 	}
 
 	// Values are rates so different time ranges read the same way.
 	step := BucketSize(o.Series, o.From, o.To)
-	perUnit, unit := rateUnit(o.Series, step)
+	perUnit, unit := rateUnit(visible, step)
 
 	// Y axis: round ticks from 0 to the first tick above the peak.
 	var peak float64
-	for _, s := range o.Series {
+	for _, s := range visible {
 		for _, p := range s.Points {
 			peak = max(peak, p.Value*perUnit)
 		}
@@ -79,7 +114,7 @@ func Render(o Options) string {
 	gutter++ // space between labels and plot
 	plotW := o.Width - gutter
 	if plotW < minPlotW {
-		return pad("", o.Width, o.Height)
+		return pad("", o.Width, o.Height), Legend{Row: -1}
 	}
 
 	c := newCanvas(plotW, plotH)
@@ -98,6 +133,9 @@ func Render(o Options) string {
 
 	// Lines, least important first so the last series stays on top.
 	for i, s := range o.Series {
+		if o.Hidden[s.Name] {
+			continue
+		}
 		xs, ys := samples(s.Points, o.From, o.To, plotW*2, step)
 		for j := range ys {
 			ys[j] = ys[j] * perUnit / yMax
@@ -124,8 +162,9 @@ func Render(o Options) string {
 		lines = append(lines, o.Styles.Axis.Render(label)+c.renderRow(row, styles, o.Styles))
 	}
 	lines = append(lines, strings.Repeat(" ", gutter)+o.Styles.Axis.Render(xAxis(xticks, o.From, o.To, plotW)))
-	lines = append(lines, legend(o, step))
-	return pad(strings.Join(lines, "\n"), o.Width, o.Height)
+	text, items := legend(o, step)
+	lines = append(lines, text)
+	return pad(strings.Join(lines, "\n"), o.Width, o.Height), Legend{Row: len(lines) - 1, Items: items}
 }
 
 // samples places the points on the dot grid: each point at the center of its
@@ -335,8 +374,11 @@ func xAxis(ticks []xtick, from, to time.Time, width int) string {
 	return string(axis)
 }
 
-func legend(o Options, step time.Duration) string {
-	parts := make([]string, 0, len(o.Series)+1)
+func legend(o Options, step time.Duration) (string, []LegendItem) {
+	const sep = "   "
+	var b strings.Builder
+	var items []LegendItem
+	x := 0
 	for i := len(o.Series) - 1; i >= 0; i-- { // most important first
 		s := o.Series[i]
 		var total float64
@@ -344,9 +386,27 @@ func legend(o Options, step time.Duration) string {
 			total += p.Value
 		}
 		swatch := lipgloss.NewStyle().Foreground(o.Color(s.Name)).Render("━━")
-		parts = append(parts, swatch+" "+o.Styles.Legend.Render(fmt.Sprintf("%s %s", s.Name, formatValue(total))))
+		label := o.Styles.Legend.Render(fmt.Sprintf("%s %s", s.Name, formatValue(total)))
+		if o.Hidden[s.Name] {
+			swatch = o.Styles.Grid.Render("──")
+			label = o.Styles.Axis.Render(fmt.Sprintf("%s %s", s.Name, formatValue(total)))
+		}
+		if len(items) > 0 {
+			b.WriteString(sep)
+			x += len(sep)
+		}
+		entry := swatch + " " + label
+		w := ansi.StringWidth(entry)
+		items = append(items, LegendItem{Name: s.Name, X0: x, X1: x + w})
+		b.WriteString(entry)
+		x += w
 	}
-	return strings.Join(parts, "   ") + o.Styles.Axis.Render(fmt.Sprintf("   · %s buckets", formatStep(step)))
+	tail := fmt.Sprintf("%s· %s buckets", sep, formatStep(step))
+	if o.LegendHint != "" {
+		tail += " · " + o.LegendHint
+	}
+	b.WriteString(o.Styles.Axis.Render(tail))
+	return b.String(), items
 }
 
 func formatStep(d time.Duration) string {

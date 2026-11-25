@@ -35,6 +35,9 @@ type SignalView interface {
 	Status() string
 }
 
+// Views also receive tea.MouseClickMsg and tea.MouseWheelMsg, with
+// coordinates relative to their body (0,0 is the top-left cell of the body).
+
 // Tab is an entry of the header. A nil View marks a signal not available yet.
 type Tab struct {
 	Title string
@@ -137,6 +140,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case tea.MouseClickMsg:
+		if mouse, ok := m.bodyMouse(msg.Mouse()); ok {
+			return m, m.updateActive(tea.MouseClickMsg(mouse))
+		}
+		return m, nil
+
+	case tea.MouseWheelMsg:
+		if mouse, ok := m.bodyMouse(msg.Mouse()); ok {
+			return m, m.updateActive(tea.MouseWheelMsg(mouse))
+		}
+		return m, nil
+
 	case tea.KeyPressMsg:
 		if cmd, handled := m.handleGlobalKey(msg); handled {
 			return m, cmd
@@ -192,6 +207,16 @@ func (m *Model) handleGlobalKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 	return nil, false
 }
 
+// bodyMouse converts screen coordinates to the view body's (below the
+// header). Events outside the body, or while the help is shown, are dropped.
+func (m *Model) bodyMouse(mouse tea.Mouse) (tea.Mouse, bool) {
+	mouse.Y-- // header line
+	if m.showHelp || mouse.Y < 0 || mouse.Y >= m.height-chromeHeight {
+		return mouse, false
+	}
+	return mouse, true
+}
+
 func (m *Model) tabNameAt(i int) string {
 	if i < len(m.tabs) {
 		return m.tabs[i].Title
@@ -220,6 +245,9 @@ func (m *Model) updateActive(msg tea.Msg) tea.Cmd {
 func (m *Model) View() tea.View {
 	v := tea.NewView(m.render())
 	v.AltScreen = true
+	// Clicks and wheel are reported to views; terminals keep shift+drag for
+	// native text selection.
+	v.MouseMode = tea.MouseModeCellMotion
 	v.WindowTitle = "lazyobs"
 	return v
 }
@@ -313,7 +341,7 @@ func (m *Model) renderHelp(height int) string {
 	h := m.help
 	h.ShowAll = true
 	content := lipgloss.JoinVertical(lipgloss.Left,
-		m.theme.Title.Render("Keyboard shortcuts"),
+		m.theme.Title.Render("Keyboard and mouse shortcuts"),
 		"",
 		h.FullHelpView(groups),
 		"",

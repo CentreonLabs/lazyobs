@@ -103,7 +103,11 @@ type Model struct {
 	liveErrs int
 
 	utc     bool
-	compact bool // timeline shown as a one-line sparkline
+	compact bool            // timeline shown as a one-line sparkline
+	hidden  map[string]bool // severities hidden from the timeline
+
+	// Clickable areas, in body coordinates, recorded by the last View.
+	hits hitAreas
 }
 
 var _ app.SignalView = (*Model)(nil)
@@ -134,6 +138,7 @@ func New(opts Options) *Model {
 		rng:    opts.Range,
 		detail: viewport.New(),
 		input:  in,
+		hidden: map[string]bool{},
 	}
 }
 
@@ -202,6 +207,10 @@ func (m *Model) Update(msg tea.Msg) (app.SignalView, tea.Cmd) {
 		return m, m.poll()
 	case tailMsg:
 		return m, m.onTail(msg)
+	case tea.MouseClickMsg:
+		return m, m.onClick(msg.Mouse())
+	case tea.MouseWheelMsg:
+		return m, m.onWheel(msg.Mouse())
 	case tea.KeyPressMsg:
 		if m.mode != modeNormal {
 			return m, m.updateInput(msg)

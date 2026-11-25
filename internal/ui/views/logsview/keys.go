@@ -20,6 +20,12 @@ type keyMap struct {
 	UTC     key.Binding
 	Layout  key.Binding
 
+	// Mouse actions, listed in the help only (their keys never match a key press).
+	MouseToggle key.Binding
+	MouseSolo   key.Binding
+	MouseSelect key.Binding
+	MouseWheel  key.Binding
+
 	// Input mode.
 	Submit     key.Binding
 	Cancel     key.Binding
@@ -41,6 +47,11 @@ func defaultKeys() keyMap {
 		UTC:     key.NewBinding(key.WithKeys("z"), key.WithHelp("z", "local/UTC time")),
 		Layout:  key.NewBinding(key.WithKeys("v"), key.WithHelp("v", "split/compact timeline")),
 
+		MouseToggle: mouseHelp("click level", "show/hide it"),
+		MouseSolo:   mouseHelp("right-click level", "show only it"),
+		MouseSelect: mouseHelp("click row", "select log"),
+		MouseWheel:  mouseHelp("wheel", "scroll"),
+
 		Submit:     key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "apply")),
 		Cancel:     key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
 		NextPreset: key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next preset")),
@@ -52,5 +63,11 @@ func (k keyMap) help() [][]key.Binding {
 		{k.Query, k.Range, k.Detail, k.Live, k.Pause},
 		k.Bindings(),
 		{k.Refresh, k.Focus, k.Close, k.Copy, k.UTC, k.Layout},
+		{k.MouseToggle, k.MouseSolo, k.MouseSelect, k.MouseWheel},
 	}
+}
+
+// mouseHelp documents a mouse action in the help screen.
+func mouseHelp(action, desc string) key.Binding {
+	return key.NewBinding(key.WithKeys("mouse:"+action), key.WithHelp(action, desc))
 }
