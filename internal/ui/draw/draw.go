@@ -3,6 +3,7 @@
 package draw
 
 import (
+	"fmt"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -35,4 +36,63 @@ func Boxed(rows []string, border lipgloss.Style) []string {
 		out = append(out, border.Render("│ ")+r+strings.Repeat(" ", w-ansi.StringWidth(r))+border.Render(" │"))
 	}
 	return append(out, border.Render("╰"+strings.Repeat("─", w+2)+"╯"))
+}
+
+// Panel draws content inside a rounded border of the given inner size, with
+// the title set in the top border like a dashboard panel. Content is cut or
+// padded to fit.
+func Panel(title, content string, innerW, innerH int, border, titleStyle lipgloss.Style) string {
+	lines := strings.Split(content, "\n")
+	if len(lines) > innerH {
+		lines = lines[:innerH]
+	}
+	for len(lines) < innerH {
+		lines = append(lines, "")
+	}
+	title = ansi.Truncate(title, max(innerW-4, 0), "…")
+	rest := max(innerW-ansi.StringWidth(title)-3, 0)
+	top := border.Render("╭─ ") + titleStyle.Render(title) + border.Render(" "+strings.Repeat("─", rest)+"╮")
+	if title == "" {
+		top = border.Render("╭" + strings.Repeat("─", innerW) + "╮")
+	}
+	out := make([]string, 0, innerH+2)
+	out = append(out, top)
+	side := border.Render("│")
+	for _, l := range lines {
+		out = append(out, side+Fit(l, innerW)+side)
+	}
+	out = append(out, border.Render("╰"+strings.Repeat("─", innerW)+"╯"))
+	return strings.Join(out, "\n")
+}
+
+// Fit truncates or pads s to exactly w cells.
+func Fit(s string, w int) string {
+	if w <= 0 {
+		return ""
+	}
+	s = ansi.Truncate(s, w, "…")
+	if pad := w - ansi.StringWidth(s); pad > 0 {
+		s += strings.Repeat(" ", pad)
+	}
+	return s
+}
+
+// OneLine puts multi-line text on one line.
+func OneLine(s string) string {
+	return strings.NewReplacer("\r\n", " ⏎ ", "\n", " ⏎ ", "\t", " ").Replace(s)
+}
+
+// Wrap wraps s to w cells (at least 10).
+func Wrap(s string, w int) string { return lipgloss.NewStyle().Width(max(w, 10)).Render(s) }
+
+// HumanCount renders a count compactly: 999, 12.3k, 4.5M.
+func HumanCount(n int64) string {
+	switch {
+	case n >= 1_000_000:
+		return fmt.Sprintf("%.1fM", float64(n)/1e6)
+	case n >= 10_000:
+		return fmt.Sprintf("%.1fk", float64(n)/1e3)
+	default:
+		return fmt.Sprint(n)
+	}
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/CentreonLabs/lazyobs/internal/obs"
 	"github.com/CentreonLabs/lazyobs/internal/obs/logs"
 	"github.com/CentreonLabs/lazyobs/internal/ui/chart"
+	"github.com/CentreonLabs/lazyobs/internal/ui/inputs"
 	"github.com/CentreonLabs/lazyobs/internal/ui/theme"
 )
 
@@ -164,13 +165,7 @@ func New(opts Options) *Model {
 			return tea.Tick(d, func(time.Time) tea.Msg { return msg })
 		}
 	}
-	in := textinput.New()
-	in.Prompt = ""
-	in.KeyMap = editKeys()
-	// A steady cursor: blinking redraws the screen twice a second for nothing.
-	styles := in.Styles()
-	styles.Cursor.Blink = false
-	in.SetStyles(styles)
+	in := inputs.New()
 	return &Model{
 		id:     nextViewID.Add(1),
 		opts:   opts,

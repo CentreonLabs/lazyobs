@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/CentreonLabs/lazyobs/internal/obs/logs"
+	"github.com/CentreonLabs/lazyobs/internal/ui/draw"
 )
 
 const (
@@ -196,64 +197,16 @@ func (m *Model) renderList(width, height int) string {
 	return strings.Join(lines, "\n")
 }
 
-// box draws content inside a rounded border of the given inner size, with
-// the title set in the top border like a dashboard panel.
+// box draws a titled panel, highlighted when focused.
 func (m *Model) box(title, content string, innerW, innerH int, focused bool) string {
-	border := lipgloss.NewStyle().Foreground(m.th.Subtle)
-	titleStyle := m.th.PanelTitle
+	border, titleStyle := lipgloss.NewStyle().Foreground(m.th.Subtle), m.th.PanelTitle
 	if focused {
-		border = lipgloss.NewStyle().Foreground(m.th.Accent)
-		titleStyle = titleStyle.Foreground(m.th.Accent)
+		border, titleStyle = lipgloss.NewStyle().Foreground(m.th.Accent), titleStyle.Foreground(m.th.Accent)
 	}
-	lines := strings.Split(content, "\n")
-	if len(lines) > innerH {
-		lines = lines[:innerH]
-	}
-	for len(lines) < innerH {
-		lines = append(lines, "")
-	}
-
-	title = ansi.Truncate(title, max(innerW-4, 0), "…")
-	rest := max(innerW-ansi.StringWidth(title)-3, 0)
-	top := border.Render("╭─ ") + titleStyle.Render(title) + border.Render(" "+strings.Repeat("─", rest)+"╮")
-	if title == "" {
-		top = border.Render("╭" + strings.Repeat("─", innerW) + "╮")
-	}
-	out := make([]string, 0, innerH+2)
-	out = append(out, top)
-	side := border.Render("│")
-	for _, l := range lines {
-		out = append(out, side+fit(l, innerW)+side)
-	}
-	out = append(out, border.Render("╰"+strings.Repeat("─", innerW)+"╯"))
-	return strings.Join(out, "\n")
+	return draw.Panel(title, content, innerW, innerH, border, titleStyle)
 }
 
-// fit truncates or pads s to exactly w cells.
-func fit(s string, w int) string {
-	if w <= 0 {
-		return ""
-	}
-	s = ansi.Truncate(s, w, "…")
-	if pad := w - ansi.StringWidth(s); pad > 0 {
-		s += strings.Repeat(" ", pad)
-	}
-	return s
-}
-
-func oneLine(s string) string {
-	return strings.NewReplacer("\r\n", " ⏎ ", "\n", " ⏎ ", "\t", " ").Replace(s)
-}
-
-func wrap(s string, w int) string { return lipgloss.NewStyle().Width(max(w, 10)).Render(s) }
-
-func humanCount(n int64) string {
-	switch {
-	case n >= 1_000_000:
-		return fmt.Sprintf("%.1fM", float64(n)/1e6)
-	case n >= 10_000:
-		return fmt.Sprintf("%.1fk", float64(n)/1e3)
-	default:
-		return fmt.Sprint(n)
-	}
-}
+func fit(s string, w int) string  { return draw.Fit(s, w) }
+func oneLine(s string) string     { return draw.OneLine(s) }
+func wrap(s string, w int) string { return draw.Wrap(s, w) }
+func humanCount(n int64) string   { return draw.HumanCount(n) }
