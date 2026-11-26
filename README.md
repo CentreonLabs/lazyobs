@@ -40,9 +40,9 @@ Screenshots use the demo data (`lazyobs --demo`); `make screenshots` regenerates
   time, and a waterfall of each trace's spans with their details
 - Navigate between signals: a log's trace (`T`), a trace's logs (`l`)
 - Service map: services and their calls drawn as a graph, with p50/p95/p99 and errors (`m`)
-- Alerts: every alert rule with its status, worst first, refreshed every 30 s; failing
-  evaluations, downtimes and acknowledgements; a rule's queries, thresholds and last value, and
-  the logs it watches (`l`)
+- Alerts: every alert rule with its status, worst first, refreshed every 30 s, and a timeline of
+  its status over the last hours or days; failing evaluations, downtimes and acknowledgements; a
+  rule's queries, thresholds, last value and status changes, and the logs it watches (`l`)
 - A `--demo` mode with synthetic data, no account needed
 
 ## Installation
@@ -109,7 +109,10 @@ In the **alerts** screen (`3`): rules are listed worst first (critical, error, w
 disabled), with a note when an evaluation fails, a downtime mutes the rule or someone acknowledged it;
 the header tab counts the critical and warning rules nobody handles. `enter` shows a rule's details
 (queries, thresholds, last measured value, notification channels, links), `l` opens the logs its
-query matches, `/` filters by name and `p` shows only the rules in trouble. Statuses are read again
+query matches, `/` filters by name and `p` shows only the rules in trouble. Each rule has a
+status timeline (the higher and redder, the worse: each cell shows the worst status of its time
+span, `·` when the rule was not evaluated); `t` switches it between the last 1h, 6h, 24h and 7d,
+and the details list the latest status changes. Statuses are read again
 every 30 seconds (`r` to refresh now); rules themselves are evaluated by the platform, every 5
 minutes by default. Alerts are read-only for now: acknowledgements and downtimes are managed in the
 web interface.

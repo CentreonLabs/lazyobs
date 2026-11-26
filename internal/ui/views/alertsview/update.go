@@ -41,7 +41,10 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 		m.problemsOnly = !m.problemsOnly
 		m.applyFilters(m.Selected().Rule.ID)
 		return m.fetchDetails()
+	case key.Matches(msg, k.Range):
+		return m.cycleHistoryRange()
 	case key.Matches(msg, k.Refresh):
+		m.histStale = true
 		return tea.Batch(m.load(), m.schedule())
 	case key.Matches(msg, k.Copy):
 		a := m.Selected()

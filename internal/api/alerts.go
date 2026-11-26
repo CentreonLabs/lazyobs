@@ -212,3 +212,49 @@ type ExternalLink struct {
 	URL         string `json:"url"`
 	Description string `json:"description"`
 }
+
+// AlertHistoryRequest is the body of POST
+// /v1/orgs/{org}/datasources/alert-events/query/metrics.
+type AlertHistoryRequest struct {
+	Version         string      `json:"version"`
+	EventID         string      `json:"eventId"`
+	Period          AlertPeriod `json:"period"`
+	IntervalSeconds int         `json:"interval,omitempty"`
+}
+
+// AlertPeriod is an absolute time window.
+type AlertPeriod struct {
+	Start time.Time `json:"start"`
+	End   time.Time `json:"end"`
+}
+
+// MetricsCurve is a series of the metrics datasources. Times are Unix
+// milliseconds.
+type MetricsCurve struct {
+	Metric string    `json:"metric"`
+	Times  []int64   `json:"times"`
+	Data   []float64 `json:"data"`
+}
+
+// Alert status codes in the history curve: the worst status of each
+// interval. Intervals without evaluation are left out.
+const (
+	AlertHistoryUnknown  = 0
+	AlertHistoryOK       = 1
+	AlertHistoryWarning  = 2
+	AlertHistoryError    = 3
+	AlertHistoryCritical = 4
+)
+
+// AlertHistory returns the status curve of a rule's event over a window.
+func (c *Client) AlertHistory(ctx context.Context, eventID string, start, end time.Time, interval time.Duration) ([]MetricsCurve, error) {
+	req := AlertHistoryRequest{
+		Version: "1", EventID: eventID, Period: AlertPeriod{Start: start.UTC(), End: end.UTC()},
+		IntervalSeconds: max(int(interval/time.Second), 1),
+	}
+	var resp struct {
+		Curves []MetricsCurve `json:"curves"`
+	}
+	err := c.do(ctx, http.MethodPost, c.orgURL("datasources", "alert-events", "query", "metrics"), req, &resp)
+	return resp.Curves, err
+}

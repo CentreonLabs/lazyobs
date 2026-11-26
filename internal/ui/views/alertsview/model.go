@@ -74,6 +74,15 @@ type Model struct {
 	// restoreRule is the rule to select once the alerts are read (session).
 	restoreRule string
 
+	// Status history of each rule over the last histRange.
+	histRange   time.Duration
+	history     map[string]alerts.History // by rule ID
+	histReq     int
+	histAt      time.Time // when the histories were last asked for
+	histStale   bool      // read them again on the next refresh
+	histLoading bool
+	histWarned  bool
+
 	utc bool
 }
 
@@ -103,6 +112,7 @@ func New(opts Options) *Model {
 	return &Model{
 		id: nextViewID.Add(1), opts: opts, th: opts.Theme, keys: defaultKeys(), input: inputs.New(),
 		details: map[string]detailEntry{}, warnings: map[string]bool{},
+		histRange: DefaultHistoryRange, history: map[string]alerts.History{},
 	}
 }
 
@@ -168,6 +178,10 @@ func (m *Model) Update(msg tea.Msg) (app.SignalView, tea.Cmd) {
 		if msg.view == m.id {
 			return m, m.onDetails(msg)
 		}
+	case historyMsg:
+		if msg.view == m.id {
+			return m, m.onHistory(msg)
+		}
 	case tickMsg:
 		if msg.view == m.id && msg.gen == m.tickGen {
 			return m, tea.Batch(m.load(), m.schedule())
@@ -206,7 +220,11 @@ func (m *Model) onOverview(msg overviewMsg) tea.Cmd {
 			cmds = append(cmds, app.Notify(app.LevelWarn, "%s", w))
 		}
 	}
-	return tea.Batch(append(cmds, m.fetchDetails())...)
+	cmds = append(cmds, m.fetchDetails())
+	if m.historyDue() {
+		cmds = append(cmds, m.fetchHistory())
+	}
+	return tea.Batch(cmds...)
 }
 
 // applyFilters rebuilds the shown list, keeping the selected rule if possible.
@@ -336,7 +354,7 @@ func (m *Model) ShortHelp() []key.Binding {
 	if m.problemsOnly {
 		problems = short(k.Problems, "all rules")
 	}
-	return []key.Binding{short(k.Down, "rule"), details, k.Logs, k.Filter, problems, k.Refresh}
+	return []key.Binding{short(k.Down, "rule"), details, k.Logs, k.Filter, problems, short(k.Range, "history "+rangeLabel(m.histRange))}
 }
 
 func short(b key.Binding, desc string) key.Binding {

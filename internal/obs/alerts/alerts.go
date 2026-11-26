@@ -150,4 +150,73 @@ type Reader interface {
 	Alerts(ctx context.Context) (Overview, error)
 	// Details returns the queries and conditions of a rule and its last value.
 	Details(ctx context.Context, a Alert) (Details, error)
+	// History returns the worst status of a rule per step over [from, to).
+	// Rules never evaluated have an empty history.
+	History(ctx context.Context, a Alert, from, to time.Time, step time.Duration) (History, error)
+}
+
+// NoData marks a time without any evaluation in History.Cells.
+const NoData Status = -1
+
+// StatusPoint is the worst status of a rule over [At, At+step).
+type StatusPoint struct {
+	At     time.Time
+	Status Status
+}
+
+// History is the status of a rule over time, points sorted by time; steps
+// without evaluation have no point.
+type History struct {
+	From, To time.Time
+	Step     time.Duration
+	Points   []StatusPoint
+}
+
+// Cells spreads the history over n cells, each showing the worst status of
+// its time span. A cell without point keeps the status of the previous one
+// while the rule is still expected to be evaluated (within hold), so that
+// cells shorter than the evaluation period do not flicker; otherwise it is
+// NoData.
+func (h History) Cells(n int, hold time.Duration) []Status {
+	cells := make([]Status, max(n, 0))
+	if n <= 0 || !h.From.Before(h.To) {
+		return cells
+	}
+	span := h.To.Sub(h.From)
+	hold = max(hold, h.Step)
+	k := 0
+	var last *StatusPoint
+	for i := range cells {
+		start := h.From.Add(span * time.Duration(i) / time.Duration(n))
+		end := h.From.Add(span * time.Duration(i+1) / time.Duration(n))
+		cells[i] = NoData
+		for ; k < len(h.Points) && h.Points[k].At.Before(end); k++ {
+			p := h.Points[k]
+			if !p.At.Before(start) || p.At.Add(h.Step).After(start) {
+				cells[i] = max(cells[i], p.Status)
+			}
+			last = &h.Points[k]
+		}
+		if cells[i] == NoData && last != nil && last.At.Add(hold).After(start) {
+			cells[i] = last.Status
+		}
+	}
+	return cells
+}
+
+// Transition is a change of status.
+type Transition struct {
+	At       time.Time
+	From, To Status
+}
+
+// Transitions lists the status changes, oldest first.
+func (h History) Transitions() []Transition {
+	var out []Transition
+	for i := 1; i < len(h.Points); i++ {
+		if a, b := h.Points[i-1], h.Points[i]; a.Status != b.Status {
+			out = append(out, Transition{At: b.At, From: a.Status, To: b.Status})
+		}
+	}
+	return out
 }

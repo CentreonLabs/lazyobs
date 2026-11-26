@@ -68,3 +68,51 @@ func TestDemoAlertsSpecialCases(t *testing.T) {
 		t.Error("unknown rule must fail")
 	}
 }
+
+func TestDemoAlertHistory(t *testing.T) {
+	now := time.Date(2026, 11, 25, 14, 7, 0, 0, time.UTC)
+	a, all := demoAlertsAt(t, now)
+	burst := all["Error burst"]
+	h, err := a.History(context.Background(), burst, now.Add(-2*time.Hour), now, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h.Step != 5*time.Minute || len(h.Points) != 24 {
+		t.Fatalf("step %v, %d points", h.Step, len(h.Points))
+	}
+	// An incident starts every 20 minutes; only the evaluation 5 minutes
+	// later can see it.
+	var critical int
+	for _, p := range h.Points {
+		if p.Status == alerts.StatusCritical {
+			critical++
+			if p.At.Minute()%20 != 5 {
+				t.Errorf("critical outside an incident at %s", p.At.Format("15:04"))
+			}
+		}
+	}
+	if critical < 3 {
+		t.Errorf("only %d critical evaluations in 2 hours", critical)
+	}
+	fine := h
+	// The last point is the current status.
+	if last := h.Points[len(h.Points)-1]; last.Status != burst.Status() {
+		t.Errorf("last point %v, current %v", last.Status, burst.Status())
+	}
+	// Coarser steps keep the worst status of the evaluations they hold.
+	h, _ = a.History(context.Background(), burst, now.Add(-2*time.Hour), now, 20*time.Minute)
+	for _, p := range h.Points {
+		worst := alerts.NoData
+		for _, f := range fine.Points {
+			if !f.At.Before(p.At) && f.At.Before(p.At.Add(20*time.Minute)) {
+				worst = max(worst, f.Status)
+			}
+		}
+		if p.Status != worst {
+			t.Errorf("step %s = %v, want %v", p.At.Format("15:04"), p.Status, worst)
+		}
+	}
+	if h, _ := a.History(context.Background(), all["Legacy syslog login failed"], now.Add(-time.Hour), now, time.Minute); len(h.Points) != 0 {
+		t.Error("a disabled rule has no history")
+	}
+}

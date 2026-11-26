@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/CentreonLabs/lazyobs/internal/app"
 	"github.com/CentreonLabs/lazyobs/internal/obs"
@@ -80,7 +82,7 @@ func TestAlertDetailsAndLogs(t *testing.T) {
 	h := newHarness(t, 160, nil, nil)
 	h.d.Keys("j", "enter")
 	a := h.view.Selected()
-	h.contains(t, "status       CRITICAL", "checked 14:05:00", "thresholds", "→ critical", "last count", "notifies", "Runbook", "l: logs of the query")
+	h.contains(t, "status       CRITICAL", "checked 14:05:00", "thresholds", "→ critical", "last count", "notifies", "Runbook")
 	h.d.Keys("l")
 	want := "severity_text:ERROR @ last 1h"
 	if a.Rule.Name != "Error burst" || len(h.logsAsks) != 1 || h.logsAsks[0] != want {
@@ -199,7 +201,15 @@ func (failingAlerts) Details(context.Context, alerts.Alert) (alerts.Details, err
 	return alerts.Details{}, errors.New("nope")
 }
 
+func (failingAlerts) History(_ context.Context, _ alerts.Alert, from, to time.Time, step time.Duration) (alerts.History, error) {
+	return alerts.History{From: from, To: to, Step: step}, nil
+}
+
 type emptyAlerts struct{ warnings []string }
+
+func (emptyAlerts) History(_ context.Context, _ alerts.Alert, from, to time.Time, step time.Duration) (alerts.History, error) {
+	return alerts.History{From: from, To: to, Step: step}, nil
+}
 
 func (e emptyAlerts) Alerts(context.Context) (alerts.Overview, error) {
 	return alerts.Overview{Warnings: e.warnings}, nil
@@ -216,3 +226,66 @@ func TestErrorsAndEmpty(t *testing.T) {
 	e := newHarness(t, 160, emptyAlerts{warnings: []string{"could not read the downtimes: 403"}}, nil)
 	e.contains(t, "No alert rule in this organization yet", "could not read the downtimes")
 }
+
+func TestStatusHistory(t *testing.T) {
+	h := newHarness(t, 160, nil, nil)
+	h.contains(t, "LAST 24H")
+	if len(h.view.history) != 6 { // every evaluated rule
+		t.Fatalf("histories of %d rules", len(h.view.history))
+	}
+	h.d.Keys("j", "enter")
+	h.contains(t, "last 24h", "11-24 14:05", "now", "changes", "ok → critical", "critical → ok", "… ")
+
+	h.d.Keys("t")
+	if h.view.histRange != 7*24*time.Hour {
+		t.Errorf("range = %v", h.view.histRange)
+	}
+	h.contains(t, "LAST 7D", "last 7d", "status history over the last 7d")
+	h.d.Keys("t")
+	if h.view.histRange != time.Hour || h.view.Snapshot().History != time.Hour {
+		t.Errorf("range = %v", h.view.histRange)
+	}
+	// Over an hour, the incidents every 20 minutes leave red marks between
+	// green ones on the error burst strip.
+	burst := h.view.Selected()
+	if burst.Rule.Name != "Error burst" {
+		t.Fatalf("selected rule = %q", burst.Rule.Name)
+	}
+	strip := ansiStrip(h.view.strip(burst, 36))
+	if strings.Count(strip, "█") < 3 || strings.Count(strip, "▁") < 12 || strings.Contains(strings.TrimLeft(strip, "·"), "·") {
+		t.Errorf("strip = %q", strip)
+	}
+	r := newHarness(t, 160, nil, func(o Options) *Model { return Restore(o, h.view.Snapshot()) })
+	if r.view.histRange != time.Hour {
+		t.Errorf("restored range = %v", r.view.histRange)
+	}
+}
+
+func TestHistoryRefreshesLessOften(t *testing.T) {
+	src := &countingAlerts{Reader: fake.NewAlerts(fake.NewLogs(2026, func() time.Time { return now }), func() time.Time { return now })}
+	h := newHarness(t, 160, src, nil)
+	first := src.history.Load()
+	if first == 0 {
+		t.Fatal("no history read")
+	}
+	h.d.Send(h.ticks[len(h.ticks)-1]) // 30 s later: same clock, statuses only
+	if n := src.history.Load(); n != first {
+		t.Errorf("history read again after a status refresh: %d → %d", first, n)
+	}
+	h.d.Keys("r") // an explicit refresh reads everything
+	if n := src.history.Load(); n != 2*first {
+		t.Errorf("history not read again on r: %d", n)
+	}
+}
+
+type countingAlerts struct {
+	alerts.Reader
+	history atomic.Int32
+}
+
+func (c *countingAlerts) History(ctx context.Context, a alerts.Alert, from, to time.Time, step time.Duration) (alerts.History, error) {
+	c.history.Add(1)
+	return c.Reader.History(ctx, a, from, to, step)
+}
+
+func ansiStrip(s string) string { return ansi.Strip(s) }

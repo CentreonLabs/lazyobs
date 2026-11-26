@@ -15,6 +15,8 @@ import (
 )
 
 const (
+	// labelW is the width of the field names in the details panel.
+	labelW = 13
 	// minSideWidth is the width from which the details sit beside the list.
 	minSideWidth = 110
 	statusW      = 8
@@ -187,12 +189,19 @@ func (m *Model) renderList(width, height int) string {
 	}
 	const maxNameW = 36
 	free := width - statusW - templateW - everyW - checkW - 10
-	nameW, noteW := max(free, 10), 0
-	if free >= 24+20 { // room for notes
-		nameW = min(maxNameW, max(24, free*45/100))
-		noteW = free - nameW - 2
+	nameW, histW, noteW := max(free, 10), 0, 0
+	if free >= 24+2+12 { // room for the history
+		histW = min(max(free/4, 12), 48)
+		nameW = min(maxNameW, max(24, (free-histW-2)*55/100))
+		noteW = max(free-nameW-histW-4, 0)
+		if noteW < 12 { // notes need some room, else give it to the name
+			nameW, noteW = min(free-histW-2, maxNameW), 0
+		}
 	}
 	header := fmt.Sprintf("%-*s  %-*s  %-*s  %*s  %-*s", statusW, "STATUS", nameW, "RULE", templateW, "TYPE", everyW, "EVERY", checkW, "CHECKED")
+	if histW > 0 {
+		header += "  " + fmt.Sprintf("%-*s", histW, "LAST "+strings.ToUpper(rangeLabel(m.histRange)))
+	}
 	if noteW > 0 {
 		header += "  NOTE"
 	}
@@ -208,12 +217,22 @@ func (m *Model) renderList(width, height int) string {
 		}
 		rest := fmt.Sprintf("  %-*s  %-*s  %*s  %-*s", nameW, ansi.Truncate(a.Rule.Name, nameW, "…"),
 			templateW, ansi.Truncate(template(a.Rule.Template), templateW, "…"), everyW, every(a.Rule.Frequency), checkW, checked)
+		strip := ""
+		if histW > 0 {
+			strip = "  " + m.strip(a, histW)
+		}
 		note := ""
 		if noteW > 0 {
 			note = "  " + ansi.Truncate(m.note(a, now), noteW, "…")
 		}
 		if i == m.cursor {
-			lines = append(lines, t.Selected.Render(draw.Fit(label+rest+ansi.Strip(note), width)))
+			// The history keeps its colors on the selected row.
+			sel := t.Selected.Render(label + rest)
+			if histW > 0 {
+				sel += t.Selected.Render("  ") + m.strip(a, histW)
+			}
+			used := ansi.StringWidth(sel)
+			lines = append(lines, sel+t.Selected.Render(draw.Fit(ansi.Strip(note), width-used)))
 			continue
 		}
 		style := m.statusStyle(a.Status())
@@ -224,7 +243,7 @@ func (m *Model) renderList(width, height int) string {
 		if !a.Rule.Enabled {
 			row = t.Dim.Render(label + rest)
 		}
-		lines = append(lines, row+note)
+		lines = append(lines, row+strip+note)
 	}
 	return strings.Join(lines, "\n")
 }
@@ -282,7 +301,6 @@ func (m *Model) renderDetails(a alerts.Alert, width int) string {
 	w := max(width-1, 10)
 	var lines []string
 	add := func(s ...string) { lines = append(lines, s...) }
-	const labelW = 13
 	field := func(name, value string) {
 		// Wrapped values stay aligned after the label.
 		value = strings.ReplaceAll(value, "\n", "\n"+strings.Repeat(" ", labelW))
@@ -349,6 +367,10 @@ func (m *Model) renderDetails(a alerts.Alert, width int) string {
 			}
 			field(name, fmt.Sprintf("%s %s → ", c.Operator, formatValue(c.Threshold))+m.statusStyle(c.Status).Render(c.Status.String()))
 		}
+	}
+	if hl := m.historyLines(a, w); len(hl) > 0 {
+		add("")
+		add(hl...)
 	}
 	add("")
 	field("evaluated", fmt.Sprintf("every %s · %s", every(a.Rule.Frequency), template(a.Rule.Template)))

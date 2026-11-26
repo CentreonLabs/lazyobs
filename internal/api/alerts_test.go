@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 	"time"
@@ -139,5 +140,28 @@ func TestDowntimesAndAcknowledgements(t *testing.T) {
 	chans, err := c.ListNotificationChannels(ctx)
 	if err != nil || len(chans) != 1 || chans[0].Name != "Ops webhook" {
 		t.Fatalf("channels = %+v, %v", chans, err)
+	}
+}
+
+func TestAlertHistory(t *testing.T) {
+	var got map[string]any
+	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/v1/orgs/my-org_1/datasources/alert-events/query/metrics" {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		_, _ = w.Write([]byte(`{"curves":[{"metric":"event count","times":[1795690800000,1795691100000],"data":[1.0,4.0],"attributes":[]}]}`))
+	})
+	start := time.Date(2026, 11, 26, 8, 30, 0, 0, time.FixedZone("CET", 3600))
+	curves, err := c.AlertHistory(context.Background(), "ev-1", start, start.Add(2*time.Hour), 5*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertJSONEqual(t, got, map[string]any{
+		"version": "1", "eventId": "ev-1", "interval": 300.0,
+		"period": map[string]any{"start": "2026-11-26T07:30:00Z", "end": "2026-11-26T09:30:00Z"},
+	})
+	if len(curves) != 1 || len(curves[0].Times) != 2 || curves[0].Data[1] != api.AlertHistoryCritical {
+		t.Errorf("curves = %+v", curves)
 	}
 }

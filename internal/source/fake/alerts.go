@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"sync"
 	"time"
 
-	"github.com/CentreonLabs/lazyobs/internal/obs"
 	"github.com/CentreonLabs/lazyobs/internal/obs/alerts"
 )
 
@@ -18,6 +18,9 @@ type Alerts struct {
 	now  func() time.Time
 	// Latency, when set, delays every call to mimic the network.
 	Latency time.Duration
+
+	mu     sync.Mutex
+	counts map[countKey]map[string]float64 // query counts per evaluation
 }
 
 var _ alerts.Reader = (*Alerts)(nil)
@@ -155,22 +158,113 @@ var errDivisionByZero = errors.New("invalid operation in flow: tried to make a d
 
 // evaluate computes the rule's value over the frequency window ending at at.
 func (a *Alerts) evaluate(ctx context.Context, r demoRule, at time.Time) (float64, error) {
-	count := func(q string) (float64, error) {
-		p, err := a.logs.Search(ctx, obs.Query{Text: q, Range: obs.Between(at.Add(-demoFrequency), at), Limit: 1})
-		return float64(p.Total), err
-	}
-	n, err := count(r.queries[0].Text)
-	if err != nil || len(r.queries) == 1 {
-		return n, err
-	}
-	d, err := count(r.queries[1].Text)
-	switch {
-	case err != nil:
+	return a.evaluateSampled(ctx, r, at, 1)
+}
+
+// evaluateSampled evaluates on one second out of stride, scaling the counts.
+func (a *Alerts) evaluateSampled(ctx context.Context, r demoRule, at time.Time, stride int64) (float64, error) {
+	counts, err := a.countsAt(ctx, at, stride)
+	if err != nil {
 		return 0, err
-	case d == 0:
+	}
+	n := counts[r.queries[0].Text]
+	if len(r.queries) == 1 {
+		return n, nil
+	}
+	d := counts[r.queries[1].Text]
+	if d == 0 {
 		return 0, errDivisionByZero
 	}
 	return n / d, nil
+}
+
+// maxCachedEvaluations bounds the cache of evaluation windows (a week of
+// 5-minute evaluations).
+const maxCachedEvaluations = 7 * 24 * 12
+
+type countKey struct{ at, stride int64 }
+
+// countsAt counts the logs matching every rule query over the window ending
+// at at, generating the window once for all rules (one second out of
+// stride), and caches the counts: demo data never changes.
+func (a *Alerts) countsAt(ctx context.Context, at time.Time, stride int64) (map[string]float64, error) {
+	key := countKey{at.Unix(), max(stride, 1)}
+	a.mu.Lock()
+	c, ok := a.counts[key]
+	a.mu.Unlock()
+	if ok {
+		return c, nil
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	filters := map[string]filter{}
+	for _, r := range demoRules {
+		for _, q := range r.queries {
+			f, err := parseFilter(q.Text)
+			if err != nil {
+				return nil, err
+			}
+			filters[q.Text] = f
+		}
+	}
+	c = make(map[string]float64, len(filters))
+	for sec := at.Add(-demoFrequency).Unix(); sec < key.at; sec += key.stride {
+		for _, rec := range a.logs.recordsAt(sec) {
+			for q, f := range filters {
+				if f.match(rec) {
+					c[q] += float64(key.stride)
+				}
+			}
+		}
+	}
+	a.mu.Lock()
+	if a.counts == nil || len(a.counts) >= maxCachedEvaluations {
+		a.counts = map[countKey]map[string]float64{}
+	}
+	a.counts[key] = c
+	a.mu.Unlock()
+	return c, nil
+}
+
+// maxHistorySeconds bounds the seconds of logs generated for a history;
+// longer ones sample the evaluation windows (demo data only).
+const maxHistorySeconds = 2 * 3600
+
+// History implements alerts.Reader: the rule is evaluated every 5 minutes
+// over the window, each step keeping the worst status.
+func (a *Alerts) History(ctx context.Context, al alerts.Alert, from, to time.Time, step time.Duration) (alerts.History, error) {
+	if err := wait(ctx, a.Latency); err != nil {
+		return alerts.History{}, err
+	}
+	step = max(step, demoFrequency).Truncate(demoFrequency)
+	h := alerts.History{From: from, To: to, Step: step}
+	i := slices.IndexFunc(demoRules, func(r demoRule) bool { return r.ID == al.Rule.ID })
+	if i < 0 || al.Event == nil {
+		return h, nil
+	}
+	r := demoRules[i]
+	last := a.now().Truncate(demoFrequency)
+	stride := max(int64(to.Sub(from)/time.Second)/maxHistorySeconds, 1)
+	for b := from.Truncate(step); b.Before(to); b = b.Add(step) {
+		p := alerts.StatusPoint{At: b, Status: alerts.NoData}
+		for at := b; at.Before(b.Add(step)) && !at.After(last); at = at.Add(demoFrequency) {
+			if at.Before(from) {
+				continue
+			}
+			s := alerts.StatusOK // a failing evaluation keeps the last status: ok here
+			if v, err := a.evaluateSampled(ctx, r, at, stride); err == nil {
+				s = status(r.conditions, v)
+			} else if ctx.Err() != nil {
+				return h, ctx.Err()
+			}
+			p.Status = max(p.Status, s)
+		}
+		if p.Status != alerts.NoData {
+			h.Points = append(h.Points, p)
+		}
+	}
+	return h, nil
 }
 
 // status applies the conditions, first match wins.

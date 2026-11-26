@@ -3,6 +3,7 @@ package remote_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -19,6 +20,8 @@ type fakeAlertsAPI struct {
 	ctx      api.AlertEventContext
 	ctxErr   error
 	ctxCalls int
+
+	historyAsks []string
 }
 
 func (f *fakeAlertsAPI) ListAlertRules(context.Context) ([]api.AlertRule, error) { return f.rules, nil }
@@ -59,6 +62,16 @@ func (f *fakeAlertsAPI) GetDowntime(_ context.Context, id string) (api.Downtime,
 
 func (f *fakeAlertsAPI) ListNotificationChannels(context.Context) ([]api.NotificationChannel, error) {
 	return []api.NotificationChannel{{ID: "c1", Name: "Ops webhook"}}, nil
+}
+
+func (f *fakeAlertsAPI) AlertHistory(_ context.Context, eventID string, start, end time.Time, interval time.Duration) ([]api.MetricsCurve, error) {
+	f.historyAsks = append(f.historyAsks, fmt.Sprintf("%s %s %s %s", eventID, start.Format("15:04"), end.Format("15:04"), interval))
+	base := start.UnixMilli()
+	// Unordered on purpose, with each status code.
+	return []api.MetricsCurve{{
+		Metric: "event count", Times: []int64{base + 600_000, base, base + 300_000, base + 900_000, base + 1_200_000},
+		Data: []float64{4, 1, 2, 3, 0},
+	}}, nil
 }
 
 func sampleAlertsAPI() *fakeAlertsAPI {
@@ -152,5 +165,28 @@ func TestAlertDetails(t *testing.T) {
 	f.ctxErr = errors.New("boom")
 	if d, err := r.Details(context.Background(), al); err != nil || d.Measure != "" {
 		t.Errorf("details = %+v, %v", d, err)
+	}
+}
+
+func TestAlertHistory(t *testing.T) {
+	f := sampleAlertsAPI()
+	r := remote.NewAlerts(f)
+	from := time.Date(2026, 11, 26, 9, 0, 0, 0, time.UTC)
+	h, err := r.History(context.Background(), alerts.Alert{Event: &alerts.Event{ID: "ev"}}, from, from.Add(time.Hour), 90*time.Second+time.Millisecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f.historyAsks) != 1 || f.historyAsks[0] != "ev 09:00 10:00 1m30s" || h.Step != 90*time.Second {
+		t.Errorf("asks = %v, step = %v", f.historyAsks, h.Step)
+	}
+	want := []alerts.Status{alerts.StatusOK, alerts.StatusWarning, alerts.StatusCritical, alerts.StatusError, alerts.StatusUnknown}
+	for i, p := range h.Points {
+		if p.Status != want[i] || !p.At.Equal(from.Add(time.Duration(i)*5*time.Minute)) {
+			t.Errorf("point %d = %+v", i, p)
+		}
+	}
+	// A rule never evaluated has no event, hence no history to ask for.
+	if h, err := r.History(context.Background(), alerts.Alert{}, from, from.Add(time.Hour), time.Minute); err != nil || len(h.Points) != 0 || len(f.historyAsks) != 1 {
+		t.Errorf("history = %+v, %v", h, err)
 	}
 }
