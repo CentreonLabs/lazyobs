@@ -11,6 +11,7 @@ type Global struct {
 	Signal1 key.Binding
 	Signal2 key.Binding
 	Signal3 key.Binding
+	Signal4 key.Binding
 	ForceQ  key.Binding
 }
 
@@ -22,7 +23,8 @@ func DefaultGlobal() Global {
 		Help:    key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "toggle help")),
 		Signal1: key.NewBinding(key.WithKeys("1"), key.WithHelp("1", "logs screen (or click its tab)")),
 		Signal2: key.NewBinding(key.WithKeys("2"), key.WithHelp("2", "traces screen")),
-		Signal3: key.NewBinding(key.WithKeys("3"), key.WithHelp("3", "metrics screen")),
+		Signal3: key.NewBinding(key.WithKeys("3"), key.WithHelp("3", "alerts screen")),
+		Signal4: key.NewBinding(key.WithKeys("4"), key.WithHelp("4", "metrics screen")),
 	}
 }
 
@@ -31,7 +33,7 @@ func (g Global) ShortHelp() []key.Binding { return []key.Binding{g.Help, g.Quit}
 
 // FullHelp implements help.KeyMap.
 func (g Global) FullHelp() [][]key.Binding {
-	return [][]key.Binding{{g.Signal1, g.Signal2, g.Signal3}, {g.Help, g.Quit, g.ForceQ}}
+	return [][]key.Binding{{g.Signal1, g.Signal2, g.Signal3, g.Signal4}, {g.Help, g.Quit, g.ForceQ}}
 }
 
 // List are the bindings to move through a list or a scrollable panel.

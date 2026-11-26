@@ -1,0 +1,4 @@
+{"results":[
+ {"id":"rule-ratio","name":"Apache 404 ratio","templateName":"ratio_logs","templateVersion":1,"description":"Too many not found","enabled":true,"frequency":300,"attributes":{"centreon.obs.alert.rule.external_links":[{"description":"what to do","label":"Runbook","url":"https://example.com/runbook"}]},"createdAt":"2026-10-19T11:07:46.208721Z","updatedAt":"2026-10-19T11:08:32.322604Z","notificationChannelIds":["chan-1"]},
+ {"id":"rule-count","name":"Watchdog","templateName":"count_logs","templateVersion":1,"description":"","enabled":false,"frequency":60,"attributes":{},"createdAt":"2026-08-24T13:15:57.830762Z","updatedAt":"2026-08-24T13:15:57.830762Z","notificationChannelIds":[]}
+],"meta":{"total":3,"page":1,"limit":100,"first":"/orgs/my-org_1/alerts?page=1&limit=100","next":"/orgs/my-org_1/alerts?page=2&limit=100","last":"/orgs/my-org_1/alerts?page=2&limit=100"}}

@@ -38,6 +38,12 @@ type SignalView interface {
 	Status() string
 }
 
+// Badger is implemented by views that show a short summary next to their
+// header tab, such as the number of failing alerts.
+type Badger interface {
+	Badge() string
+}
+
 // Views also receive tea.MouseClickMsg, tea.MouseWheelMsg, tea.MouseMotionMsg
 // (pointer moves, with or without a button held) and tea.MouseReleaseMsg, with coordinates relative
 // to their body (0,0 is the top-left cell of the body).
@@ -247,7 +253,7 @@ func (m *Model) handleGlobalKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 		return nil, true
 	case key.Matches(msg, m.keys.Quit):
 		return tea.Quit, true
-	case key.Matches(msg, m.keys.Signal1, m.keys.Signal2, m.keys.Signal3):
+	case key.Matches(msg, m.keys.Signal1, m.keys.Signal2, m.keys.Signal3, m.keys.Signal4):
 		i := int(msg.String()[0] - '1')
 		if i >= len(m.tabs) || m.tabs[i].View == nil {
 			return Notify(LevelInfo, "%s are not available yet", strings.ToLower(m.tabNameAt(i))), true
@@ -362,6 +368,11 @@ func (m *Model) renderHeader() string {
 			part = t.ActiveTab.Render(label)
 		default:
 			part = t.Tab.Render(label)
+		}
+		if b, ok := tab.View.(Badger); ok {
+			if badge := b.Badge(); badge != "" {
+				part += badge + " "
+			}
 		}
 		w := lipgloss.Width(part)
 		m.signalHits = append(m.signalHits, [2]int{x, x + w})

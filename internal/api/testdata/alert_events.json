@@ -1,0 +1,4 @@
+{"results":[
+ {"id":"1ad771b73b161d3ac0cfa0b146e97781d6dfe82c8098e0cf71493eae1365e2ff","ruleId":"rule-ratio","runId":"run-1","updatedAt":"2026-11-26T10:15:00.178Z","status":"critical","message":"Event generated with status: Critical","attributes":{"alert_rule.name":"Apache 404 ratio","centreon.obs.alert.event.flapping_detected":false}},
+ {"id":"7c2077b2d92d8515dd12b1eae27185d090e2382c32f9ba8fa989923c894d4a02","ruleId":"rule-new","runId":"run-2","updatedAt":"2026-11-26T10:15:00.177Z","status":"ok","message":"Evaluation failed, last known status kept","attributes":{"centreon.obs.alert.event.eval_error.details":"invalid operation in flow: tried to make a division by zero","centreon.obs.alert.event.eval_error.type":"runtime_condition","centreon.obs.alert.event.flapping_detected":true}}
+],"meta":{"total":2,"page":1,"limit":100,"first":"/orgs/my-org_1/alerts/events?page=1&limit=100","last":"/orgs/my-org_1/alerts/events?page=1&limit=100"}}

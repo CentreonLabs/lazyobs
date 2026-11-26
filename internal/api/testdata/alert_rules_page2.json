@@ -1,0 +1,3 @@
+{"results":[
+ {"id":"rule-new","name":"New rule","templateName":"count_logs","templateVersion":1,"description":"","enabled":true,"frequency":300,"attributes":{},"createdAt":"2026-11-24T13:15:57Z","updatedAt":"2026-11-24T13:15:57Z","notificationChannelIds":[]}
+],"meta":{"total":3,"page":2,"limit":100,"first":"/orgs/my-org_1/alerts?page=1&limit=100","last":"/orgs/my-org_1/alerts?page=2&limit=100"}}

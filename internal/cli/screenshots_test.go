@@ -15,6 +15,7 @@ import (
 	"github.com/CentreonLabs/lazyobs/internal/ui/tabset"
 	"github.com/CentreonLabs/lazyobs/internal/ui/theme"
 	"github.com/CentreonLabs/lazyobs/internal/ui/uitest"
+	"github.com/CentreonLabs/lazyobs/internal/ui/views/alertsview"
 	"github.com/CentreonLabs/lazyobs/internal/ui/views/logsview"
 	"github.com/CentreonLabs/lazyobs/internal/ui/views/tracesview"
 )
@@ -62,6 +63,9 @@ func TestScreenshots(t *testing.T) {
 		{"service-map", "lazyobs — service map", func(d *uitest.Driver, _ *tui.Model) {
 			d.Keys("2", "m", "j")
 		}},
+		{"alerts", "lazyobs — alert rules", func(d *uitest.Driver, _ *tui.Model) {
+			d.Keys("3", "j", "enter")
+		}},
 	}
 	for _, s := range shots {
 		t.Run(s.name, func(t *testing.T) {
@@ -79,7 +83,7 @@ func TestScreenshots(t *testing.T) {
 // screenshotApp builds the whole interface on demo data at a fixed time.
 func screenshotApp(t *testing.T) (*uitest.Driver, *tui.Model) {
 	t.Helper()
-	now := time.Date(2026, 11, 25, 14, 7, 0, 0, time.UTC)
+	now := time.Date(2026, 11, 25, 14, 7, 0, 0, time.UTC) // just after an incident
 	clock := func() time.Time { return now }
 	logSrc, traceSrc := fake.NewLogs(2026, clock), fake.NewTraces(2026, clock)
 	th := theme.New(true)
@@ -93,6 +97,10 @@ func screenshotApp(t *testing.T) (*uitest.Driver, *tui.Model) {
 	root := tui.New("demo data", th,
 		tui.Tab{Title: signalLogs, View: tabset.New(signalLogs, th, logsview.New(logOpts))},
 		tui.Tab{Title: signalTraces, View: tabset.New(signalTraces, th, tracesview.New(traceOpts))},
+		tui.Tab{Title: signalAlerts, View: alertsview.New(alertsview.Options{
+			Source: fake.NewAlerts(logSrc, clock), Theme: th, Now: clock, OpenLogs: traceOpts.OpenLogs,
+			After: func(time.Duration, tea.Msg) tea.Cmd { return nil },
+		})},
 		tui.Tab{Title: "Metrics"},
 	)
 	return uitest.New(t, root, shotCols, shotRows), root

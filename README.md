@@ -4,7 +4,7 @@ A terminal UI for the Centreon observability platform (formerly Centreon Log Man
 In the spirit of lazygit, lazydocker and k9s: search, filter and investigate your
 observability data without leaving the terminal.
 
-> **Status:** early development. Logs and traces are supported; metrics will follow.
+> **Status:** early development. Logs, traces and alerts are supported; metrics will follow.
 
 ![Logs with their timeline and top values](docs/screenshots/logs.svg)
 
@@ -13,6 +13,8 @@ observability data without leaving the terminal.
 | ![Trace waterfall](docs/screenshots/waterfall.svg)              | ![Service map](docs/screenshots/service-map.svg) |
 | **Query autocompletion**                                        | **Log details and filters**                      |
 | ![Query autocompletion](docs/screenshots/logs-autocomplete.svg) | ![Log details](docs/screenshots/logs-detail.svg) |
+| **Alert rules**                                                 |                                                  |
+| ![Alert rules](docs/screenshots/alerts.svg)                     |                                                  |
 
 Screenshots use the demo data (`lazyobs --demo`); `make screenshots` regenerates them.
 
@@ -38,6 +40,9 @@ Screenshots use the demo data (`lazyobs --demo`); `make screenshots` regenerates
   time, and a waterfall of each trace's spans with their details
 - Navigate between signals: a log's trace (`T`), a trace's logs (`l`)
 - Service map: services and their calls drawn as a graph, with p50/p95/p99 and errors (`m`)
+- Alerts: every alert rule with its status, worst first, refreshed every 30 s; failing
+  evaluations, downtimes and acknowledgements; a rule's queries, thresholds and last value, and
+  the logs it watches (`l`)
 - A `--demo` mode with synthetic data, no account needed
 
 ## Installation
@@ -86,7 +91,7 @@ lazyobs --demo                                   # try it without an account
 | `ctrl+t` / `ctrl+w`                             | New tab (from the current search) / close tab                                    |
 | `<` / `>`, click a tab                          | Previous / next tab                                                              |
 | `T`                                             | Open the trace of the selected log                                               |
-| `1` `2` `3`, click a header tab                 | Switch signal (logs, traces; metrics soon)                                       |
+| `1` `2` `3` `4`, click a header tab             | Switch signal (logs, traces, alerts; metrics soon)                               |
 | `?`                                             | Help                                                                             |
 | `q`                                             | Quit                                                                             |
 
@@ -99,6 +104,15 @@ and `ctrl+d`/`ctrl+u` scroll its details, `l` shows the logs of the trace and `y
 `esc` goes back to the list. Time range, zoom and moves work as for logs. `m` shows the service
 map of the time range: `j`/`k` (or a click) select a service and show its latencies and calls,
 `enter` lists the traces starting in it, `l` shows its logs and `v` switches to a table.
+
+In the **alerts** screen (`3`): rules are listed worst first (critical, error, warning, then ok and
+disabled), with a note when an evaluation fails, a downtime mutes the rule or someone acknowledged it;
+the header tab counts the critical and warning rules nobody handles. `enter` shows a rule's details
+(queries, thresholds, last measured value, notification channels, links), `l` opens the logs its
+query matches, `/` filters by name and `p` shows only the rules in trouble. Statuses are read again
+every 30 seconds (`r` to refresh now); rules themselves are evaluated by the platform, every 5
+minutes by default. Alerts are read-only for now: acknowledgements and downtimes are managed in the
+web interface.
 
 Live mode polls every 10 seconds and re-queries the last minute to catch logs indexed late.
 

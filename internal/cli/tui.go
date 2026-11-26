@@ -12,6 +12,7 @@ import (
 	"github.com/CentreonLabs/lazyobs/internal/api"
 	tui "github.com/CentreonLabs/lazyobs/internal/app"
 	"github.com/CentreonLabs/lazyobs/internal/obs"
+	"github.com/CentreonLabs/lazyobs/internal/obs/alerts"
 	"github.com/CentreonLabs/lazyobs/internal/obs/logs"
 	"github.com/CentreonLabs/lazyobs/internal/obs/traces"
 	"github.com/CentreonLabs/lazyobs/internal/session"
@@ -19,6 +20,7 @@ import (
 	"github.com/CentreonLabs/lazyobs/internal/source/remote"
 	"github.com/CentreonLabs/lazyobs/internal/ui/tabset"
 	"github.com/CentreonLabs/lazyobs/internal/ui/theme"
+	"github.com/CentreonLabs/lazyobs/internal/ui/views/alertsview"
 	"github.com/CentreonLabs/lazyobs/internal/ui/views/logsview"
 	"github.com/CentreonLabs/lazyobs/internal/ui/views/tracesview"
 )
@@ -50,6 +52,7 @@ type traceSource interface {
 const (
 	signalLogs   = "Logs"
 	signalTraces = "Traces"
+	signalAlerts = "Alerts"
 )
 
 func (a *app) runTUI(ctx context.Context, opts tuiOptions) error {
@@ -64,6 +67,7 @@ func (a *app) runTUI(ctx context.Context, opts tuiOptions) error {
 	var (
 		src        logSource
 		tsrc       traceSource
+		asrc       alerts.Reader
 		fields     obs.FieldSuggester
 		translator obs.QueryTranslator
 		label      string
@@ -73,6 +77,9 @@ func (a *app) runTUI(ctx context.Context, opts tuiOptions) error {
 		seed := uint64(time.Now().UnixNano()) //nolint:gosec // seed only
 		f, ft := fake.NewLogs(seed, nil), fake.NewTraces(seed, nil)
 		f.Latency, ft.Latency = 150*time.Millisecond, 150*time.Millisecond
+		fa := fake.NewAlerts(fake.NewLogs(seed, nil), nil)
+		fa.Latency = 150 * time.Millisecond
+		asrc = fa
 		src, tsrc, fields, translator, label, sessionKey = f, ft, f, fake.Translator{}, "demo data", "demo"
 	} else {
 		r, err := a.resolve(ctx)
@@ -83,7 +90,7 @@ func (a *app) runTUI(ctx context.Context, opts tuiOptions) error {
 		if err != nil {
 			return err
 		}
-		src, tsrc = remote.NewLogs(client, nil), remote.NewTraces(client, nil)
+		src, tsrc, asrc = remote.NewLogs(client, nil), remote.NewTraces(client, nil), remote.NewAlerts(client)
 		translator = remote.NewTranslator(client, nil)
 		fields = remote.NewFields(client)
 		label = r.Org
@@ -99,12 +106,14 @@ func (a *app) runTUI(ctx context.Context, opts tuiOptions) error {
 		logsview.Options{Source: src, Histogram: src, Breakdown: src, Fields: fields, Translator: translator, Theme: th},
 		tracesview.Options{Source: tsrc, Histogram: tsrc, Fetcher: tsrc, Topology: tsrc, Theme: th},
 	)
+	alertOpts := alertsview.Options{Source: asrc, Theme: th, OpenLogs: traceOpts.OpenLogs}
 	store := session.Store{Path: session.DefaultPath(a.env.Getenv)}
-	tracesKey := sessionKey + "#traces"
+	tracesKey, alertsKey := sessionKey+"#traces", sessionKey+"#alerts"
 
 	// Reopen the last session unless the command line asks for a new search.
 	var (
 		logTabs, traceTabs     []tabset.Child
+		alertsView             = alertsview.New(alertOpts)
 		logActive, traceActive int
 		signal                 int
 		notice                 string
@@ -120,6 +129,12 @@ func (a *app) runTUI(ctx context.Context, opts tuiOptions) error {
 			signal = saved.Signal
 			if savedTraces, ok, _ := store.Load(tracesKey); ok {
 				traceTabs, traceActive = restoreTabs(savedTraces, func(s tracesview.State) tabset.Child { return tracesview.Restore(traceOpts, s) })
+			}
+			if savedAlerts, ok, _ := store.Load(alertsKey); ok && len(savedAlerts.Tabs) > 0 {
+				var st alertsview.State
+				if json.Unmarshal(savedAlerts.Tabs[0], &st) == nil {
+					alertsView = alertsview.Restore(alertOpts, st)
+				}
 			}
 			if n := len(logTabs) + len(traceTabs); n > 0 {
 				notice = fmt.Sprintf("restored %d tab%s from the last session · start with --fresh to begin anew", n, plural(n))
@@ -139,6 +154,7 @@ func (a *app) runTUI(ctx context.Context, opts tuiOptions) error {
 	root := tui.New(label, th,
 		tui.Tab{Title: signalLogs, View: logsSet},
 		tui.Tab{Title: signalTraces, View: tracesSet},
+		tui.Tab{Title: signalAlerts, View: alertsView},
 		tui.Tab{Title: "Metrics"},
 	)
 	root.SetActive(signal)
@@ -153,6 +169,7 @@ func (a *app) runTUI(ctx context.Context, opts tuiOptions) error {
 	for _, err := range []error{
 		store.Save(sessionKey, logState),
 		store.Save(tracesKey, snapshotTabs(tracesSet, (*tracesview.Model).Snapshot)),
+		saveView(store, alertsKey, alertsView.Snapshot()),
 	} {
 		if err != nil {
 			fmt.Fprintln(a.err, "warning: could not save the session:", err)
@@ -208,6 +225,15 @@ func snapshotTabs[V tabset.Child, S any](t *tabset.Model, snapshot func(V) S) se
 		}
 	}
 	return s
+}
+
+// saveView saves the state of a signal shown without tabs, as a single tab.
+func saveView[S any](store session.Store, key string, state S) error {
+	b, err := json.Marshal(state)
+	if err != nil {
+		return err
+	}
+	return store.Save(key, session.Session{Tabs: []json.RawMessage{b}})
 }
 
 func plural(n int) string {
