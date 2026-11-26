@@ -47,11 +47,43 @@ Screenshots use the demo data (`lazyobs --demo`); `make screenshots` regenerates
 
 ## Installation
 
+### macOS and Linux
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/CentreonLabs/lazyobs/main/install.sh | sh
+```
+
+The script downloads the latest release for your system, checks it against the release's SHA-256
+checksums and installs the `lazyobs` binary into `~/.local/bin` (it tells you if that directory is
+not in your `PATH`). It needs `curl`, `tar` and `sha256sum` or `shasum`. Options, as environment
+variables:
+
+```sh
+# a given version, elsewhere
+curl -fsSL https://raw.githubusercontent.com/CentreonLabs/lazyobs/main/install.sh |
+  LAZYOBS_VERSION=v0.1.0 LAZYOBS_INSTALL_DIR=/usr/local/bin sh
+```
+
+**Update:** run the same command again; it does nothing when the latest version is already
+installed. `lazyobs --version` shows the installed one.
+
+**Uninstall:** `rm ~/.local/bin/lazyobs`. Settings and sessions live in `~/.config/lazyobs` and
+`~/.local/state/lazyobs`.
+
+### Windows
+
+Download `lazyobs_<version>_windows_amd64.zip` (or `arm64`) from the
+[releases](https://github.com/CentreonLabs/lazyobs/releases), check it against `checksums.txt`
+(`Get-FileHash <file>`), extract `lazyobs.exe` and put it in a folder of your `PATH`. Update the
+same way.
+
+### With Go
+
 ```sh
 go install github.com/CentreonLabs/lazyobs/cmd/lazyobs@latest
 ```
 
-Homebrew packaging will come later.
+The binary then reports the version `dev`.
 
 ## Usage
 
@@ -187,6 +219,13 @@ make test    # unit tests with the race detector
 make lint    # golangci-lint (pinned version, no install needed)
 make help    # list all targets
 ```
+
+### Releasing
+
+Push a tag `vX.Y.Z` on `main`: the release workflow runs the tests, builds the archives of every
+platform with `scripts/dist.sh` and publishes them on GitHub with their checksums and notes
+generated from the merged pull requests (a tag with a suffix, such as `v1.2.0-rc.1`, makes a
+pre-release). `make dist VERSION=vX.Y.Z` builds the same archives locally.
 
 To fill a test organization with the demo data (linked logs and traces),
 `make seed SINCE=2h` sends it through the OTLP ingestion endpoint with the
