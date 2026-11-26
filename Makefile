@@ -71,6 +71,10 @@ cross: ## Build for every supported platform into ./dist
 			-o dist/$(BINARY)-$$os-$$arch$$ext ./cmd/lazyobs || exit 1; \
 	done
 
+.PHONY: dist
+dist: ## Build the release archives and checksums into ./dist (VERSION=v1.2.3)
+	scripts/dist.sh $(VERSION)
+
 .PHONY: clean
 clean: ## Remove build artifacts
 	rm -rf bin dist coverage.out

@@ -4,7 +4,7 @@ Terminal UI (Go, Charm Bubble Tea v2 / Bubbles v2 / Lip Gloss v2) for the Centre
 observability platform (formerly Centreon Log Management). Spirit: lazygit / k9s.
 Logs are the first signal; traces and metrics must plug in without refactoring.
 
-- Module: `github.com/CentreonLabs/lazyobs` (repository not created yet; work stays local until it is)
+- Module and repository: `github.com/CentreonLabs/lazyobs` (public)
 - License: Apache-2.0
 - Go: version pinned in `go.mod` (toolchain auto-download)
 
@@ -17,6 +17,7 @@ make lint     # golangci-lint v2 via `go run` (pinned in Makefile)
 make integration  # live API tests, needs LAZYOBS_TOKEN + LAZYOBS_ORG
 make fmt      # gofumpt + goimports through golangci-lint
 make cross    # build all OS/arch into ./dist
+make dist VERSION=v1.2.3  # release archives + checksums (what the release workflow publishes)
 ```
 
 ## Architecture
@@ -75,4 +76,5 @@ UI conventions:
 - No logging to stdout/stderr while the TUI runs; use `log/slog` to a file behind `--debug`.
 - Inject clocks (`func() time.Time`) in time-dependent code so the engine is testable.
 - Small, tested steps; `make lint test` must pass before committing.
-- Git: `CentreonLabs` is a Centreon product org → once the remote exists, use feature branches and PRs, never push to `main`.
+- Git: `CentreonLabs` is a Centreon product org → feature branches and PRs, never push to `main`.
+- Releases: pushing a tag `vX.Y.Z` runs `.github/workflows/release.yml` (tests, `scripts/dist.sh`, `gh release create`). `install.sh` installs/updates from the releases and must stay POSIX `sh` (piped to `sh`).
