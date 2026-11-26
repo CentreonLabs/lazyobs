@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -34,7 +35,7 @@ func newHarness(t *testing.T, width int, src alerts.Reader, build func(Options) 
 	t.Helper()
 	clock := func() time.Time { return now }
 	if src == nil {
-		src = fake.NewAlerts(fake.NewLogs(2026, clock), clock)
+		src = warmed(t, 24*time.Hour)
 	}
 	h := &harness{src: src}
 	th := theme.New(true)
@@ -53,6 +54,39 @@ func newHarness(t *testing.T, width int, src alerts.Reader, build func(Options) 
 	h.view.utc = true
 	h.d = uitest.New(t, app.New("test", th, app.Tab{Title: "Alerts", View: h.view}), width, 30)
 	return h
+}
+
+// demoAlerts are shared by the tests: computing the demo history is slow
+// under the race detector (more than the driver lets a command run on a CI
+// runner), so it is computed once, before the views ask for it.
+var (
+	demoAlerts     *fake.Alerts
+	demoAlertsOnce sync.Once
+	warmedRanges   sync.Map
+)
+
+func warmed(t *testing.T, ranges ...time.Duration) *fake.Alerts {
+	t.Helper()
+	demoAlertsOnce.Do(func() {
+		clock := func() time.Time { return now }
+		demoAlerts = fake.NewAlerts(fake.NewLogs(2026, clock), clock)
+	})
+	ctx := context.Background()
+	ov, err := demoAlerts.Alerts(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range ranges {
+		if _, done := warmedRanges.LoadOrStore(r, true); done {
+			continue
+		}
+		for _, a := range ov.Alerts {
+			if _, err := demoAlerts.History(ctx, a, now.Add(-r), now, historyStep(r)); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	return demoAlerts
 }
 
 func (h *harness) contains(t *testing.T, want ...string) {
@@ -228,7 +262,7 @@ func TestErrorsAndEmpty(t *testing.T) {
 }
 
 func TestStatusHistory(t *testing.T) {
-	h := newHarness(t, 160, nil, nil)
+	h := newHarness(t, 160, warmed(t, 24*time.Hour, 7*24*time.Hour, time.Hour), nil)
 	h.contains(t, "LAST 24H")
 	if len(h.view.history) != 6 { // every evaluated rule
 		t.Fatalf("histories of %d rules", len(h.view.history))
@@ -262,7 +296,7 @@ func TestStatusHistory(t *testing.T) {
 }
 
 func TestHistoryRefreshesLessOften(t *testing.T) {
-	src := &countingAlerts{Reader: fake.NewAlerts(fake.NewLogs(2026, func() time.Time { return now }), func() time.Time { return now })}
+	src := &countingAlerts{Reader: warmed(t, 24*time.Hour)}
 	h := newHarness(t, 160, src, nil)
 	first := src.history.Load()
 	if first == 0 {

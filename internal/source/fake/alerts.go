@@ -178,9 +178,9 @@ func (a *Alerts) evaluateSampled(ctx context.Context, r demoRule, at time.Time, 
 	return n / d, nil
 }
 
-// maxCachedEvaluations bounds the cache of evaluation windows (a week of
-// 5-minute evaluations).
-const maxCachedEvaluations = 7 * 24 * 12
+// maxCachedEvaluations bounds the cache of evaluation windows: a few weeks
+// of 5-minute evaluations, enough for every history range at once.
+const maxCachedEvaluations = 4 * 7 * 24 * 12
 
 type countKey struct{ at, stride int64 }
 
