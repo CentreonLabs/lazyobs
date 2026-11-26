@@ -35,6 +35,12 @@ test: ## Run unit tests with the race detector
 integration: ## Run integration tests against the live API (needs LAZYOBS_TOKEN and LAZYOBS_ORG)
 	go test -tags integration -run Integration -count=1 -v ./...
 
+SINCE ?= 1h
+
+.PHONY: seed
+seed: ## Send the demo data of the last SINCE (default 1h) to the current context's org
+	go run ./cmd/lazyobs-seed --since $(SINCE)
+
 .PHONY: screenshots
 screenshots: ## Regenerate the README screenshots (demo data) into docs/screenshots
 	TZ=UTC LAZYOBS_SCREENSHOTS=$(CURDIR)/docs/screenshots go test -tags screenshots -run Screenshots -count=1 ./internal/cli/

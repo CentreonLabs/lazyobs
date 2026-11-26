@@ -437,3 +437,13 @@ func (t filterTerm) matches(d document) bool {
 	got, ok := d.field(t.field)
 	return ok && strings.EqualFold(got, want)
 }
+
+// At returns the records generated during the second sec, newest first, as
+// Search would return them. It lets tools replay the demo data elsewhere.
+func (l *Logs) At(sec int64) []logs.Record {
+	recs := l.recordsAt(sec)
+	for i := range recs {
+		recs[i] = withRaw(recs[i])
+	}
+	return recs
+}

@@ -171,6 +171,11 @@ make lint    # golangci-lint (pinned version, no install needed)
 make help    # list all targets
 ```
 
+To fill a test organization with the demo data (linked logs and traces),
+`make seed SINCE=2h` sends it through the OTLP ingestion endpoint with the
+token of the current context. Ingested data cannot be deleted: it stays until
+the end of the retention period.
+
 ## License
 
 [Apache License 2.0](LICENSE)

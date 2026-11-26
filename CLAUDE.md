@@ -30,7 +30,7 @@ Dependency direction: `ui → app → engine → obs ← source → api`. `inter
 | `internal/obs/logs`      | Log domain: `Record`, `Severity`, dedup fingerprint                                                                                          |
 | `internal/api`           | Hand-written HTTP client (DTOs, errors, auth); fixtures in `testdata/`                                                                       |
 | `internal/source/remote` | Adapts `api` to `obs` interfaces                                                                                                             |
-| `internal/source/fake`   | Synthetic data source (tests, `--demo`)                                                                                                      |
+| `internal/source/fake`   | Synthetic data source (tests, `--demo`); `cmd/lazyobs-seed` + `internal/seed` replay it to a real org over OTLP                              |
 | `internal/engine`        | UI-free logic: pager (offset → time-window), live tail (poll + dedup)                                                                        |
 | `internal/config`        | Contexts, env/flag overrides, `Secret` type                                                                                                  |
 | `internal/app`           | Root Bubble Tea model, signal registry (`SignalView`)                                                                                        |

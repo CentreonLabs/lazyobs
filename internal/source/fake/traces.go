@@ -395,3 +395,7 @@ func (t *Traces) Values(ctx context.Context, field, prefix string, from, to time
 	})
 	return values[:min(limit, len(values))], nil
 }
+
+// At returns the traces started during the second sec, each with all its
+// spans (root first). It lets tools replay the demo data elsewhere.
+func (t *Traces) At(sec int64) []traces.Detail { return t.tracesAt(sec) }
