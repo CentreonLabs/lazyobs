@@ -35,6 +35,10 @@ test: ## Run unit tests with the race detector
 integration: ## Run integration tests against the live API (needs LAZYOBS_TOKEN and LAZYOBS_ORG)
 	go test -tags integration -run Integration -count=1 -v ./...
 
+.PHONY: screenshots
+screenshots: ## Regenerate the README screenshots (demo data) into docs/screenshots
+	TZ=UTC LAZYOBS_SCREENSHOTS=$(CURDIR)/docs/screenshots go test -tags screenshots -run Screenshots -count=1 ./internal/cli/
+
 .PHONY: cover
 cover: ## Run tests and open the coverage report
 	go test -race -coverprofile=coverage.out ./...

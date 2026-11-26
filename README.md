@@ -6,6 +6,16 @@ observability data without leaving the terminal.
 
 > **Status:** early development. Logs and traces are supported; metrics will follow.
 
+![Logs with their timeline and top values](docs/screenshots/logs.svg)
+
+| Trace waterfall                                                 | Service map                                      |
+| --------------------------------------------------------------- | ------------------------------------------------ |
+| ![Trace waterfall](docs/screenshots/waterfall.svg)              | ![Service map](docs/screenshots/service-map.svg) |
+| **Query autocompletion**                                        | **Log details and filters**                      |
+| ![Query autocompletion](docs/screenshots/logs-autocomplete.svg) | ![Log details](docs/screenshots/logs-detail.svg) |
+
+Screenshots use the demo data (`lazyobs --demo`); `make screenshots` regenerates them.
+
 ## Features
 
 - Search logs with the Quickwit query syntax over a relative or absolute time range
