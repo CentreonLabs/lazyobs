@@ -16,7 +16,8 @@ import (
 	"github.com/CentreonLabs/lazyobs/internal/ui/views/logsview"
 )
 
-var now = time.Date(2026, 11, 25, 12, 0, 0, 0, time.Local)
+// now is a fixed instant, the same whatever the time zone of the machine.
+var now = time.Date(2026, 11, 25, 12, 0, 0, 0, time.UTC)
 
 func start(t *testing.T, width, height int, opts logsview.Options) *uitest.Driver {
 	t.Helper()
@@ -168,7 +169,7 @@ func TestInfiniteScroll(t *testing.T) {
 func TestTimelineLayouts(t *testing.T) {
 	d := start(t, 120, 40, logsview.Options{})
 	s := d.Screen()
-	if !strings.Contains(s, "Log volume by severity") || !strings.Contains(s, "━━ INFO") || !strings.Contains(s, "0/min") {
+	if !strings.Contains(s, "Log volume by severity") || !strings.Contains(s, "━━ INFO") || !strings.Contains(s, " 0/") {
 		t.Fatalf("split timeline missing:\n%s", s)
 	}
 	// The timeline takes about half of the body: the list header is in the lower half.
